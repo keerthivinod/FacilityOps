@@ -23,7 +23,6 @@ export function PWAInstallPrompt() {
 
     // Listen for the beforeinstallprompt event (Chrome/Edge)
     const handleBeforeInstallPrompt = (e) => {
-      console.log('PWA install prompt available');
       e.preventDefault();
       setDeferredPrompt(e);
       setShowInstallButton(true);
@@ -31,7 +30,6 @@ export function PWAInstallPrompt() {
 
     // Listen for successful installation
     const handleAppInstalled = () => {
-      console.log('PWA was installed');
       setIsInstalled(true);
       setShowInstallButton(false);
       localStorage.setItem('pwa-installed', 'true');
@@ -45,7 +43,6 @@ export function PWAInstallPrompt() {
       // For browsers that don't support beforeinstallprompt (Safari, Samsung Internet)
       setTimeout(() => {
         if (!deferredPrompt && !isInstalled) {
-          console.log('Showing manual install button for unsupported browsers');
           setShowInstallButton(true);
         }
       }, 2000);
@@ -63,8 +60,7 @@ export function PWAInstallPrompt() {
     if (deferredPrompt) {
       // Use the browser's native install prompt
       deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      console.log(`User response to install prompt: ${outcome}`);
+      await deferredPrompt.userChoice;
       setDeferredPrompt(null);
       setShowInstallButton(false);
     } else {
