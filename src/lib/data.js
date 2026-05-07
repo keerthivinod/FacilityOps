@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { verifyCredentials, saveSession } from "./auth";
+import { verifyCredentials, saveSession } from "./auth.js";
 
 export const ESCALATION_RULES = [{ level: 1, label: "Staff/Technician", time: 0, desc: "Auto-assigned to matched technician" }, { level: 2, label: "Facility Admin (Lakshmi N)", time: 20, desc: "Alert if unacknowledged in 20 min" }, { level: 3, label: "Facility Manager (Keerthi Vinod)", time: 60, desc: "SLA breach alert at 60 min" }, { level: 4, label: "Ops Head (Kichu/Ramanandan/Dr.Ramkumar)", time: 480, desc: "Incident report end-of-day" }];
 export const TAT_BENCHMARKS = { plumber: 30, carpenter: 45, electrician: 25, it: 20, helper: 15 };
