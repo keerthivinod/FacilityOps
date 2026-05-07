@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { cd, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 import { signOut } from "@/lib/auth";
+import { api } from "@/lib/api";
 
 const ROLES = ["facility_manager", "technician", "management", "admin", "viewer"];
 const ROLE_COLORS = {
@@ -24,6 +25,30 @@ export default function Stg({ user, showToast, isManager, setUser }) {
 
     const [showUserForm, setShowUserForm] = useState(false);
     const [userForm, setUserForm] = useState(null);
+
+    const [tenantSettings, setTenantSettings] = useState(null);
+    const [aiKeyInput, setAiKeyInput] = useState("");
+    const [savingAi, setSavingAi] = useState(false);
+
+    useEffect(() => {
+        if (isManager && tab === "ai") {
+            api.get("tenantSettings").then(setTenantSettings).catch(() => showToast("Failed to load settings", "error"));
+        }
+    }, [isManager, tab, showToast]);
+
+    const saveAiConfig = async () => {
+        setSavingAi(true);
+        try {
+            const updated = await api.put("tenantSettings", null, { openaiApiKey: aiKeyInput });
+            setTenantSettings(updated);
+            setAiKeyInput("");
+            showToast("AI Configuration saved!");
+        } catch {
+            showToast("Failed to save AI config", "error");
+        }
+        setSavingAi(false);
+    };
+
 
     const saveProfile = () => {
         if (!profile.name) { showToast("Name required", "error"); return; }
@@ -67,7 +92,7 @@ export default function Stg({ user, showToast, isManager, setUser }) {
             <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 14 }}>Settings</div>
 
             <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-                {([["profile", "My Profile"], ...(isManager ? [["users", "User Management"]] : []), ["app", "App Info"]]).map(([v, l]) => (
+                {([["profile", "My Profile"], ...(isManager ? [["users", "User Management"], ["ai", "AI Brain"]] : []), ["app", "App Info"]]).map(([v, l]) => (
                     <button key={v} onClick={() => setTab(v)} style={{ padding: "6px 14px", borderRadius: 999, border: `1px solid ${tab === v ? "#4f46e5" : "#e5e7eb"}`, background: tab === v ? "#4f46e5" : "#fff", color: tab === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                         {l}
                     </button>
@@ -150,6 +175,23 @@ export default function Stg({ user, showToast, isManager, setUser }) {
                             </div>
                         );
                     })}
+                </div>
+            )}
+
+
+            {tab === "ai" && isManager && (
+                <div style={cd()}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginBottom: 12 }}>AI Brain Configuration</div>
+                    <div style={{ fontSize: 12, color: "#64748b", marginBottom: 16 }}>
+                        Enter your OpenAI API key to enable the AI Brain features. This key will be securely stored on the server and used for all AI queries within your organization.
+                    </div>
+                    <div style={{ marginBottom: 16 }}>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: "#64748b", marginBottom: 4 }}>OpenAI API Key {tenantSettings?.hasAiKey ? "(Currently Set)" : ""}</div>
+                        <input type="password" placeholder={tenantSettings?.openaiApiKey || "sk-..."} value={aiKeyInput} onChange={e => setAiKeyInput(e.target.value)} style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 10, padding: "9px 12px", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
+                    </div>
+                    <button onClick={saveAiConfig} disabled={savingAi || !aiKeyInput} style={{ width: "100%", padding: 11, background: (savingAi || !aiKeyInput) ? "#94a3b8" : "#4f46e5", border: "none", borderRadius: 12, color: "#fff", fontSize: 13, fontWeight: 700, cursor: (savingAi || !aiKeyInput) ? "default" : "pointer" }}>
+                        {savingAi ? "Saving..." : "Save AI Key"}
+                    </button>
                 </div>
             )}
 

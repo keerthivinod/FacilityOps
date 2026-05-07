@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from "react";
+import { api } from "@/lib/api";
 
 // AI requests go through the Cloud Function via Firebase Hosting rewrite.
 // The OpenAI API key lives ONLY in server-side environment variables — never in this file.
-const AI_ENDPOINT = "/api/ai";
+
 
 const SUGGESTED_QUERIES = [
     "What is the root cause of the elevator incidents?",
@@ -396,20 +397,16 @@ export default function AIBrainModule({ tickets, assets, tasks, incidents, staff
         setLoading(true);
 
         try {
-            const res = await fetch(AI_ENDPOINT, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    messages: [
-                        { role: "system", content: buildContext(P) },
-                        ...messages.filter(m => typeof m.content === "string").map(m => ({ role: m.role, content: typeof m.content === "string" ? m.content : "Analysis provided." })),
-                        { role: "user", content: q }
-                    ]
-                })
+
+            const data = await api.post("ai", {
+                messages: [
+                    ...messages.filter(m => typeof m.content === "string").map(m => ({ role: m.role, content: typeof m.content === "string" ? m.content : "Analysis provided." })),
+                    { role: "user", content: q }
+                ],
+                systemPrompt: buildContext(P)
             });
-            const data = await res.json();
-            if (res.ok && data.content) {
-                setMessages(prev => [...prev, { role: "assistant", content: data.content }]);
+            if (data.reply) {
+                setMessages(prev => [...prev, { role: "assistant", content: data.reply }]);
             } else {
                 const local = generateLocalResponse(q, P);
                 setMessages(prev => [...prev, { role: "assistant", content: local }]);
