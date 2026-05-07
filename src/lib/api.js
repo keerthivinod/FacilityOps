@@ -1,4 +1,4 @@
-import { getToken, signOut } from "./auth";
+import { getToken, signOut } from "./auth.js";
 
 const BASE = "/.netlify/functions";
 const URLS = {
