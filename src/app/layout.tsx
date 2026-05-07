@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
 import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
+import Script from "next/script";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -67,24 +68,7 @@ export default function RootLayout({
       >
         {children}
         <PWAInstallPrompt />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              // Service Worker Registration - Essential for PWA
-              if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
-                  navigator.serviceWorker.register('/sw.js')
-                    .then(function(registration) {
-                      console.log('Service Worker registered successfully:', registration.scope);
-                    })
-                    .catch(function(error) {
-                      console.log('Service Worker registration failed:', error);
-                    });
-                });
-              }
-            `,
-          }}
-        />
+        <Script src="/register-sw.js" strategy="afterInteractive" />
       </body>
     </html>
   );
