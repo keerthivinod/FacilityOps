@@ -20,7 +20,7 @@ const DEMO_USERS = [
 ];
 
 const DEMO_CREDENTIALS = [
-  { username: "keerthi",    email: "keerthivinod@gmail.com",    password: "facility123" },
+  { username: "keerthi",    email: "keerthivinod@gmail.com",    password: "keerthi" },
   { username: "rajan",      email: "rajan@vaidyagrama.com",      password: "electrician123" },
   { username: "management", email: "management@vaidyagrama.com", password: "admin123" },
 ];
