@@ -50,8 +50,8 @@ exports.handler = async (event) => {
               reported_date,cost,location,created_at,started_at,resolved_at,
               esc_level,esc_log,source,tat_minutes,category,resolution)
            VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7,'open'),$8,$9,$10,$11,$12,$13,
-                   COALESCE($14,NOW()),$15,$16,COALESCE($17,0),
-                   COALESCE($18,'[]')::jsonb,COALESCE($19,'app'),$20,$21,$22)
+                   COALESCE($14,CURRENT_TIMESTAMP),$15,$16,COALESCE($17,0),
+                   COALESCE($18,'[]'),COALESCE($19,'app'),$20,$21,$22)
            RETURNING *`,
           [newId, tenantId, body.asset || null, body.assetId || null, body.problem,
            body.priority, body.status, body.by || null,

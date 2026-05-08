@@ -48,7 +48,7 @@ exports.handler = async (event) => {
       `UPDATE users
        SET password_hash = $1,
            must_change_password = false,
-           password_changed_at = NOW()
+           password_changed_at = CURRENT_TIMESTAMP
        WHERE id = $2`,
       [newHash, u.id]
     );
