@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -21,8 +21,13 @@ export default function Doc({ docs, setDocs, showToast }) {
     const [form, setForm] = useState(null);
     const [filter, setFilter] = useState("all");
 
-    const expired = docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0));
-    const expiring = docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30);
+    // ⚡ Bolt Optimization: Memoize expensive array filtering and date parsing
+    // Prevents O(N) Date parsing operations when unrelated state (like the Add/Edit form) changes.
+    const { expired, expiring } = useMemo(() => {
+        const _expired = docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0));
+        const _expiring = docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30);
+        return { expired: _expired, expiring: _expiring };
+    }, [docs]);
 
     const handleAdd = () => {
         setForm({ name: "", type: "policy", expiry: "", size: "", expired: false });
@@ -56,10 +61,13 @@ export default function Doc({ docs, setDocs, showToast }) {
         showToast("Document deleted");
     };
 
-    const flt = filter === "all" ? docs
-        : filter === "expired" ? docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0))
-        : filter === "expiring" ? docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30)
-        : docs.filter(d => d.type === filter);
+    // ⚡ Bolt Optimization: Memoize filtered list and reuse expired/expiring
+    const flt = useMemo(() => {
+        if (filter === "all") return docs;
+        if (filter === "expired") return expired;
+        if (filter === "expiring") return expiring;
+        return docs.filter(d => d.type === filter);
+    }, [docs, filter, expired, expiring]);
 
     return (
         <div>
