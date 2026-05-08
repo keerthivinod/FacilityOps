@@ -53,7 +53,7 @@ exports.handler = async (event) => {
     }
 
     // Touch last_login_at for audit / activity tracking.
-    await query("UPDATE users SET last_login_at = NOW() WHERE id = $1", [u.id]);
+    await query("UPDATE users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1", [u.id]);
 
     const user = {
       id:                 u.id,

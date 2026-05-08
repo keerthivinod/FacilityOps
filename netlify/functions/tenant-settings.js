@@ -65,7 +65,7 @@ exports.handler = async (event) => {
           if (v !== undefined) { vals.push(v); sets.push(`${k} = $${vals.length}`); }
         }
         if (!sets.length) return fail(400, "no updatable fields");
-        sets.push(`updated_at = NOW()`);
+        sets.push(`updated_at = CURRENT_TIMESTAMP`);
         vals.push(claims.tenantId);
         const rows = await query(
           `UPDATE tenant_settings SET ${sets.join(", ")}
