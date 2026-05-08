@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, QRCode } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -15,11 +15,16 @@ export default function Ast({ assets, setAssets, showToast }) {
     const [repairLog, setRepairLog] = useState({ notes: "", action: "inspection", status: "completed" });
     const [scanLogs, setScanLogs] = useState([]);
 
-    const flt = assets.filter((a) => {
-        if (filter !== "all" && a.status !== filter && a.cat !== filter) return false;
-        if (search && !a.name.toLowerCase().includes(search.toLowerCase()) && !a.loc.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-    });
+    // ⚡ Bolt Optimization: Memoized filter array and extracted lowercase conversion
+    // Prevents re-computing filter on every render, and avoids repetitive toLowerCase() inside O(n) loop
+    const flt = useMemo(() => {
+        const query = search ? search.toLowerCase() : "";
+        return assets.filter((a) => {
+            if (filter !== "all" && a.status !== filter && a.cat !== filter) return false;
+            if (query && !a.name.toLowerCase().includes(query) && !a.loc.toLowerCase().includes(query)) return false;
+            return true;
+        });
+    }, [assets, filter, search]);
 
     const handleEdit = (asset) => { setForm({ ...asset }); setShowAdd(true); };
     const handleAdd = () => { setForm({ name: "", cat: "Power", loc: "", model: "", vendor: "", interval: 90, status: "healthy", icon: "\u{1F527}" }); setShowAdd(true); };
