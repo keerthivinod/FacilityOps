@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, statusColor, SB, PD } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -19,11 +19,16 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
         { k: "completed", l: "Done" },
     ];
 
-    const flt = tasks.filter((t) => {
-        if (tab !== "all" && t.status !== tab) return false;
-        if (search && !t.asset.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-    });
+    // ⚡ Bolt: Memoize filtered tasks to prevent O(N) recalculations on unrelated state updates.
+    // Also extracts the search string lowercasing out of the O(N) filter loop for efficiency.
+    const flt = useMemo(() => {
+        const query = search ? search.toLowerCase() : "";
+        return tasks.filter((t) => {
+            if (tab !== "all" && t.status !== tab) return false;
+            if (query && !t.asset.toLowerCase().includes(query)) return false;
+            return true;
+        });
+    }, [tasks, tab, search]);
 
     const done = (id) => {
         setTasks((p) => p.map((t) => (t.id === id ? { ...t, status: "completed", completedAt: new Date().toISOString().split("T")[0], remark } : t)));
