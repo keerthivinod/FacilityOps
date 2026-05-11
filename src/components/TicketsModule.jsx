@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -89,8 +89,18 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
         showToast(`→ ${status}`);
     };
 
-    const flt = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
-    const t = detail ? tickets.find((x) => x.id === detail) : null;
+    const flt = useMemo(() => filter === "all" ? tickets : tickets.filter((t) => t.status === filter), [tickets, filter]);
+    const t = useMemo(() => detail ? tickets.find((x) => x.id === detail) : null, [tickets, detail]);
+
+    const statusCounts = useMemo(() => {
+        const counts = { open: 0, "in-progress": 0, resolved: 0 };
+        for (const ticket of tickets) {
+            if (counts[ticket.status] !== undefined) {
+                counts[ticket.status]++;
+            }
+        }
+        return counts;
+    }, [tickets]);
 
     if (detail && t)
         return (
@@ -159,7 +169,12 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
             </div>
 
             <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
-                {[["all", "All", tickets.length], ["open", "Open", tickets.filter((t) => t.status === "open").length], ["in-progress", "Active", tickets.filter((t) => t.status === "in-progress").length], ["resolved", "Done", tickets.filter((t) => t.status === "resolved").length]].map(([v, l, c]) => (
+                {[
+                    ["all", "All", tickets.length],
+                    ["open", "Open", statusCounts.open],
+                    ["in-progress", "Active", statusCounts["in-progress"]],
+                    ["resolved", "Done", statusCounts.resolved]
+                ].map(([v, l, c]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#4f46e5" : "#e5e7eb"}`, background: filter === v ? "#4f46e5" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                         {l}({c})
                     </button>

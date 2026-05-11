@@ -1,11 +1,41 @@
 "use client";
 import { cd } from "@/lib/data";
+import { useMemo } from "react";
 
 export default function Rpt({ P }) {
   const totalTickets = P.tickets.length;
-  const resolved = P.tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-  const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t) => a + t.tatMins, 0) / (P.tickets.filter(t => t.tatMins).length || 1);
-  const overdueCount = P.tasks.filter(t => t.status === "overdue").length;
+
+  const { resolved, avgTAT, priorityCounts } = useMemo(() => {
+    let resolvedCount = 0;
+    let tatSum = 0;
+    let tatCount = 0;
+    const prioCounts = { critical: 0, high: 0, medium: 0, low: 0 };
+
+    for (const t of P.tickets) {
+      if (t.status === "resolved" || t.status === "closed") resolvedCount++;
+      if (t.tatMins) {
+        tatSum += t.tatMins;
+        tatCount++;
+      }
+      if (prioCounts[t.priority] !== undefined) {
+        prioCounts[t.priority]++;
+      }
+    }
+
+    return {
+      resolved: resolvedCount,
+      avgTAT: tatCount > 0 ? tatSum / tatCount : 0,
+      priorityCounts: prioCounts
+    };
+  }, [P.tickets]);
+
+  const overdueCount = useMemo(() => {
+    let count = 0;
+    for (const t of P.tasks) {
+      if (t.status === "overdue") count++;
+    }
+    return count;
+  }, [P.tasks]);
 
   return (
     <div>
@@ -27,7 +57,7 @@ export default function Rpt({ P }) {
       <div style={cd({ marginBottom: 10 })}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Tickets by Priority</div>
         {["critical", "high", "medium", "low"].map(p => {
-          const cnt = P.tickets.filter(t => t.priority === p).length;
+          const cnt = priorityCounts[p];
           const pct = totalTickets > 0 ? Math.round((cnt / totalTickets) * 100) : 0;
           const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
           return (
