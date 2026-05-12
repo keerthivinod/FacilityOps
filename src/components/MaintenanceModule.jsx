@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, statusColor, SB, PD } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -19,11 +19,26 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
         { k: "completed", l: "Done" },
     ];
 
-    const flt = tasks.filter((t) => {
-        if (tab !== "all" && t.status !== tab) return false;
-        if (search && !t.asset.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-    });
+    // ⚡ Bolt Optimization: Calculate tab counts in a single pass O(n) loop
+    // Replaces O(n*m) repetitive .filter() calls in the render body
+    const counts = useMemo(() => {
+        const c = { all: tasks.length };
+        for (const t of tasks) {
+            c[t.status] = (c[t.status] || 0) + 1;
+        }
+        return c;
+    }, [tasks]);
+
+    // ⚡ Bolt Optimization: Memoized filter array and extracted lowercase conversion
+    // Prevents re-computing filter on every render, and avoids repetitive toLowerCase() inside O(n) loop
+    const flt = useMemo(() => {
+        const query = search ? search.toLowerCase() : "";
+        return tasks.filter((t) => {
+            if (tab !== "all" && t.status !== tab) return false;
+            if (query && !t.asset.toLowerCase().includes(query)) return false;
+            return true;
+        });
+    }, [tasks, tab, search]);
 
     const done = (id) => {
         setTasks((p) => p.map((t) => (t.id === id ? { ...t, status: "completed", completedAt: new Date().toISOString().split("T")[0], remark } : t)));
@@ -88,7 +103,7 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search tasks/assets..." style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 12, padding: "10px 14px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
                 {tabs.map((t) => {
-                    const c = t.k === "all" ? tasks.length : tasks.filter((x) => x.status === t.k).length;
+                    const c = counts[t.k] || 0;
                     return (
                         <button key={t.k} onClick={() => setTab(t.k)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${tab === t.k ? "#4f46e5" : "#e5e7eb"}`, background: tab === t.k ? "#4f46e5" : "#fff", color: tab === t.k ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {t.l} ({c})
