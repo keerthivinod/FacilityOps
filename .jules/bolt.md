@@ -1,3 +1,6 @@
 ## 2024-05-15 - Array Filtering Extracted Invariants
 **Learning:** Found string operations like `.toLowerCase()` inside `Array.prototype.filter()` loops checking for matches. In components like `AssetsModule.jsx`, this resulted in executing O(N) operations inside O(N) loops during re-renders.
 **Action:** Extract loop invariants (`search.toLowerCase()`) out of the filter callback and wrap the filtered list in `useMemo` to prevent re-computation on unrelated state changes.
+## 2024-06-12 - Dashboard Single-Pass Optimization
+**Learning:** The application uses large arrays of mock/state data for things like tickets, tasks, etc., and iterates over them repeatedly using `.filter()` and `.reduce()` inside `useMemo()` hooks to calculate aggregate metrics (like dashboard statuses, priority counts, and cost totals). For example, `DashboardModule.jsx` iterated over `P.tickets` 8 separate times originally and 4 more times for distribution calculations. This repeated `O(N)` pattern causes unnecessary CPU cycles on every state update that triggers the memo block.
+**Action:** Consolidate multiple `.filter()` and `.reduce()` passes over the same dataset into a single `for` loop, extracting counts and subarrays simultaneously. This significantly speeds up rendering, reducing time from ~71ms to ~19ms for 50k items in tests.
