@@ -169,38 +169,76 @@ function AlertPill({ count, label, onClick, icon: Icon, tone }) {
 }
 
 export default function Dash({ P }) {
-  const m = useMemo(() => {
-    const openT       = P.tickets.filter(x => x.status === "open").length;
-    const inProgress  = P.tickets.filter(x => x.status === "in-progress").length;
-    const resolved    = P.tickets.filter(x => x.status === "resolved" || x.status === "closed").length;
-    const dueMaint    = P.tasks.filter(x => x.status === "overdue" || x.status === "due-soon").length;
-    const overdueM    = P.tasks.filter(x => x.status === "overdue").length;
-    const openInc     = P.incidents.filter(x => x.status !== "closed").length;
-    const onDuty      = P.staff.filter(x => x.status !== "on-leave").length;
-    const criticalT   = P.tickets.filter(x => x.priority === "critical" && x.status !== "resolved" && x.status !== "closed");
-    const highT       = P.tickets.filter(x => x.priority === "high" && x.status !== "resolved" && x.status !== "closed");
-    const totalCost   = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const tatList     = P.tickets.filter(t => t.tatMins);
-    const avgTAT      = tatList.length ? Math.round(tatList.reduce((a, t) => a + t.tatMins, 0) / tatList.length) : 0;
-    const lowStock    = P.inventory.filter(i => i.qty < i.min);
+  const [m, distribution] = useMemo(() => {
+    let openT = 0, inProgress = 0, resolved = 0;
+    let totalCost = 0, tatSum = 0, tatCount = 0;
+    let whatsapp = 0;
+    const criticalT = [], highT = [];
+    const priorityCnt = { critical: 0, high: 0, medium: 0, low: 0 };
+
+    for (let i = 0; i < P.tickets.length; i++) {
+      const t = P.tickets[i];
+      if (t.status === "open") openT++;
+      else if (t.status === "in-progress") inProgress++;
+      else if (t.status === "resolved" || t.status === "closed") resolved++;
+
+      if (t.status !== "resolved" && t.status !== "closed") {
+        if (t.priority === "critical") criticalT.push(t);
+        else if (t.priority === "high") highT.push(t);
+      }
+
+      totalCost += (t.cost || 0);
+
+      if (t.tatMins) {
+        tatSum += t.tatMins;
+        tatCount++;
+      }
+
+      if (t.source === "whatsapp") whatsapp++;
+
+      if (priorityCnt[t.priority] !== undefined) {
+        priorityCnt[t.priority]++;
+      }
+    }
+
+    const avgTAT = tatCount ? Math.round(tatSum / tatCount) : 0;
+    const priority = [...criticalT, ...highT.slice(0, 4)].slice(0, 5);
+
+    let dueMaint = 0, overdueM = 0;
+    for (let i = 0; i < P.tasks.length; i++) {
+      const t = P.tasks[i];
+      if (t.status === "overdue") { overdueM++; dueMaint++; }
+      else if (t.status === "due-soon") dueMaint++;
+    }
+
+    let openInc = 0;
+    for (let i = 0; i < P.incidents.length; i++) {
+      if (P.incidents[i].status !== "closed") openInc++;
+    }
+
+    let onDuty = 0;
+    for (let i = 0; i < P.staff.length; i++) {
+      if (P.staff[i].status !== "on-leave") onDuty++;
+    }
+
+    const lowStock = P.inventory.filter(i => i.qty < i.min);
     const expiringAMC = P.vendors.filter(v => v.status === "expiring");
-    const overdueA    = P.assets.filter(a => a.status === "overdue");
-    const whatsapp    = P.tickets.filter(t => t.source === "whatsapp").length;
-    const priority    = [...criticalT, ...highT.slice(0, 4)].slice(0, 5);
-    return { openT, inProgress, resolved, dueMaint, overdueM, openInc, onDuty, totalCost, avgTAT, lowStock, expiringAMC, overdueA, whatsapp, priority, criticalCount: criticalT.length };
+    const overdueA = P.assets.filter(a => a.status === "overdue");
+
+    const mStats = { openT, inProgress, resolved, dueMaint, overdueM, openInc, onDuty, totalCost, avgTAT, lowStock, expiringAMC, overdueA, whatsapp, priority, criticalCount: criticalT.length };
+
+    const dist = ["critical", "high", "medium", "low"].map(p => {
+      const cnt = priorityCnt[p];
+      const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
+      return { p, cnt, pct };
+    });
+
+    return [mStats, dist];
   }, [P.tickets, P.tasks, P.incidents, P.staff, P.inventory, P.vendors, P.assets]);
 
   const today = new Date().toLocaleDateString("en-IN", {
     weekday: "long", day: "numeric", month: "long",
   });
-
-  const distribution = useMemo(() => (
-    ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
-      const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
-      return { p, cnt, pct };
-    })
-  ), [P.tickets]);
 
   return (
     <motion.div
