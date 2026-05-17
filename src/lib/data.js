@@ -1,15 +1,27 @@
 import { useState, useCallback } from "react";
 import { verifyCredentials, saveSession } from "./auth.js";
+import {
+  ESCALATION_RULES,
+  TAT_BENCHMARKS,
+  autoRoute,
+  statusColor,
+  priorityColor,
+  PIE_COLORS,
+  bs,
+  cd
+} from "./data-utils.js";
 
-export const ESCALATION_RULES = [{ level: 1, label: "Staff/Technician", time: 0, desc: "Auto-assigned to matched technician" }, { level: 2, label: "Facility Admin (Lakshmi N)", time: 20, desc: "Alert if unacknowledged in 20 min" }, { level: 3, label: "Facility Manager (Keerthi Vinod)", time: 60, desc: "SLA breach alert at 60 min" }, { level: 4, label: "Ops Head (Kichu/Ramanandan/Dr.Ramkumar)", time: 480, desc: "Incident report end-of-day" }];
-export const TAT_BENCHMARKS = { plumber: 30, carpenter: 45, electrician: 25, it: 20, helper: 15 };
-export function autoRoute(text) { const t = text.toLowerCase(); const routes = [{ kw: ["leak", "water", "pipe", "tap", "drain", "flush", "bathroom", "toilet", "plumb", "sewage", "overflow"], role: "Plumber", person: "Rajesh M", id: "S01" }, { kw: ["chair", "door", "wood", "furniture", "table", "cabinet", "shelf", "window", "lock", "hinge", "broken furniture"], role: "Carpenter", person: "Murugan K", id: "S02" }, { kw: ["power", "electric", "switch", "light", "fan", "wiring", "mcb", "socket", "generator", "transformer", "voltage", "short circuit", "fuse", "trip"], role: "Electrician", person: "Rajan Kumar", id: "S03" }, { kw: ["ac", "air condition", "cooling", "compressor", "hvac", "not cooling", "hot"], role: "Electrician", person: "Suresh P", id: "S04" }, { kw: ["network", "internet", "wifi", "computer", "printer", "server", "software", "cctv", "camera", "it", "monitor", "email"], role: "IT Support", person: "Arun M", id: "S05" }, { kw: ["clean", "garbage", "pest", "garden", "painting", "sweep", "mop", "dust", "stain", "smell"], role: "Helper", person: "Vinod R", id: "S06" }, { kw: ["elevator", "lift", "stuck", "door sensor", "kone"], role: "Electrician", person: "Suresh P", id: "S04" }]; for (const r of routes) { if (r.kw.some(k => t.includes(k))) return r; } return { role: "General", person: "Vinod R", id: "S06" }; }
+export {
+  ESCALATION_RULES,
+  TAT_BENCHMARKS,
+  autoRoute,
+  statusColor,
+  priorityColor,
+  PIE_COLORS,
+  bs,
+  cd
+};
 
-export const statusColor = s => ({ overdue: "#dc2626", "due-soon": "#d97706", healthy: "#16a34a", upcoming: "#2563eb", scheduled: "#7c3aed" }[s] || "#6b7280");
-export const priorityColor = p => ({ critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" }[p] || "#6b7280");
-export const PIE_COLORS = ["#16a34a", "#d97706", "#dc2626", "#6366f1"];
-export const bs = (c, bg) => ({ display: "inline-flex", alignItems: "center", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 700, color: c, background: bg, border: `1px solid ${c}22` });
-export const cd = (x = {}) => ({ background: "#fff", borderRadius: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.07)", border: "1px solid #e5e7eb", padding: 16, ...x });
 export const Badge = ({ label, color, bg }) => <span style={bs(color, bg)}>{label}</span>;
 export const SB = ({ s }) => { const m = { overdue: ["#dc2626", "#fef2f2"], "due-soon": ["#d97706", "#fffbeb"], healthy: ["#16a34a", "#f0fdf4"], upcoming: ["#2563eb", "#eff6ff"], scheduled: ["#7c3aed", "#f5f3ff"], open: ["#dc2626", "#fef2f2"], "in-progress": ["#d97706", "#fffbeb"], resolved: ["#16a34a", "#f0fdf4"], closed: ["#6b7280", "#f9fafb"], active: ["#16a34a", "#f0fdf4"], expiring: ["#d97706", "#fffbeb"], investigating: ["#d97706", "#fffbeb"], available: ["#16a34a", "#f0fdf4"], busy: ["#d97706", "#fffbeb"], "on-leave": ["#6b7280", "#f9fafb"], planned: ["#2563eb", "#eff6ff"] }; const [c, bg] = m[s] || ["#6b7280", "#f9fafb"]; return <Badge label={s === "due-soon" ? "Due Soon" : s === "in-progress" ? "In Progress" : s === "on-leave" ? "On Leave" : s.charAt(0).toUpperCase() + s.slice(1)} color={c} bg={bg} />; };
 export const PD = ({ p }) => <span style={{ width: 8, height: 8, borderRadius: 4, background: priorityColor(p), display: "inline-block", marginRight: 4 }} />;

@@ -12,7 +12,7 @@
     "db:migrate": "node scripts/migrate.js",
     "db:migrate-saas": "node scripts/migrate-saas.js",
     "db:seed": "node scripts/seed.js",
-    "test": "node --test src/lib/api.test.js"
+    "test": "node --test src/lib/*.test.js"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
