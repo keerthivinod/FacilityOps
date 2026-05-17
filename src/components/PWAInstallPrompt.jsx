@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { checkIsPWAInstalled, checkIsInstallDismissed, handleInstallPrompt } from '@/lib/pwa-utils';
 
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -8,18 +9,7 @@ export function PWAInstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if already installed
-    const checkInstalled = () => {
-      if (typeof window !== 'undefined') {
-        const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-        const isInWebAppiOS = window.navigator.standalone === true;
-        const isInstalled = localStorage.getItem('pwa-installed') === 'true';
-
-        setIsInstalled(isStandalone || isInWebAppiOS || isInstalled);
-      }
-    };
-
-    checkInstalled();
+    setIsInstalled(checkIsPWAInstalled());
 
     // Listen for the beforeinstallprompt event (Chrome/Edge)
     const handleBeforeInstallPrompt = (e) => {
@@ -57,15 +47,10 @@ export function PWAInstallPrompt() {
   }, [deferredPrompt, isInstalled]);
 
   const handleInstallClick = async () => {
+    await handleInstallPrompt(deferredPrompt);
     if (deferredPrompt) {
-      // Use the browser's native install prompt
-      deferredPrompt.prompt();
-      await deferredPrompt.userChoice;
       setDeferredPrompt(null);
       setShowInstallButton(false);
-    } else {
-      // For browsers without beforeinstallprompt, show manual instructions
-      alert('To install this app:\n\n• Chrome/Edge: Look for the install icon in the address bar\n• Samsung Internet: Tap ⋮ Menu → Add to Home screen\n• Safari (iOS): Tap Share button → Add to Home Screen');
     }
   };
 
@@ -75,7 +60,7 @@ export function PWAInstallPrompt() {
   }
 
   // Don't show if user has dismissed it
-  if (localStorage.getItem('pwa-install-dismissed') === 'true') {
+  if (checkIsInstallDismissed()) {
     return null;
   }
 
