@@ -15,6 +15,17 @@ export default function Ast({ assets, setAssets, showToast }) {
     const [repairLog, setRepairLog] = useState({ notes: "", action: "inspection", status: "completed" });
     const [scanLogs, setScanLogs] = useState([]);
 
+    // ⚡ Bolt Optimization: Memoized lookup map for scan logs by asset ID
+    // Converts O(N) filtering in getAssetHistory into O(1) lookup
+    const scanLogsMap = useMemo(() => {
+        const map = {};
+        scanLogs.forEach(log => {
+            if (!map[log.assetId]) map[log.assetId] = [];
+            map[log.assetId].push(log);
+        });
+        return map;
+    }, [scanLogs]);
+
     // ⚡ Bolt Optimization: Memoized filter array and extracted lowercase conversion
     // Prevents re-computing filter on every render, and avoids repetitive toLowerCase() inside O(n) loop
     const flt = useMemo(() => {
@@ -92,7 +103,7 @@ export default function Ast({ assets, setAssets, showToast }) {
     };
 
     const getAssetHistory = (assetId) => {
-        const assetScans = scanLogs.filter(l => l.assetId === assetId);
+        const assetScans = scanLogsMap[assetId] || [];
         return { scans: assetScans };
     };
 
