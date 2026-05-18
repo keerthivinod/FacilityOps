@@ -1,4 +1,4 @@
-import { getToken, signOut } from "./auth.js";
+import { signOut } from "./auth.js";
 
 const BASE = "/.netlify/functions";
 const URLS = {
@@ -19,11 +19,6 @@ const URLS = {
   tenantSettings: `${BASE}/tenant-settings`,
 };
 
-function authHeaders() {
-  const token = getToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
 async function handleResponse(res, label) {
   if (res.status === 401) {
     signOut();
@@ -39,7 +34,7 @@ async function handleResponse(res, label) {
 export const api = {
   async get(resource) {
     const url = URLS[resource] || resource;
-    const res = await fetch(url, { headers: authHeaders() });
+    const res = await fetch(url);
     return handleResponse(res, resource);
   },
 
@@ -47,7 +42,7 @@ export const api = {
     const url = URLS[resource] || resource;
     const res = await fetch(url, {
       method:  "POST",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(body),
     });
     return handleResponse(res, `${resource} POST`);
@@ -57,7 +52,7 @@ export const api = {
     const url = URLS[resource] || resource;
     const res = await fetch(`${url}?id=${encodeURIComponent(id)}`, {
       method:  "PUT",
-      headers: { "Content-Type": "application/json", ...authHeaders() },
+      headers: { "Content-Type": "application/json" },
       body:    JSON.stringify(body),
     });
     return handleResponse(res, `${resource} PUT`);
@@ -67,7 +62,6 @@ export const api = {
     const url = URLS[resource] || resource;
     const res = await fetch(`${url}?id=${encodeURIComponent(id)}`, {
       method:  "DELETE",
-      headers: authHeaders(),
     });
     return handleResponse(res, `${resource} DELETE`);
   },

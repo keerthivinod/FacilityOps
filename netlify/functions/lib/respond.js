@@ -6,18 +6,18 @@ const CORS = {
   "Content-Type": "application/json",
 };
 
-const ok = (data, meta) => ({
+const ok = (data, meta, extraHeaders = {}) => ({
   statusCode: 200,
-  headers: CORS,
+  headers: { ...CORS, ...extraHeaders },
   body: JSON.stringify({ success: true, data, ...(meta ? { meta } : {}) }),
 });
 
-const fail = (status, msg) => ({
+const fail = (status, msg, extraHeaders = {}) => ({
   statusCode: status,
-  headers: CORS,
+  headers: { ...CORS, ...extraHeaders },
   body: JSON.stringify({ success: false, error: msg }),
 });
 
-const preflight = () => ({ statusCode: 204, headers: CORS, body: "" });
+const preflight = (extraHeaders = {}) => ({ statusCode: 204, headers: { ...CORS, ...extraHeaders }, body: "" });
 
 module.exports = { ok, fail, preflight };

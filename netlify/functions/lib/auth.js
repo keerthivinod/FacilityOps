@@ -29,16 +29,33 @@ function verify(token) {
   }
 }
 
-// Throws 401 if the request has no valid bearer token.
+// Throws 401 if the request has no valid bearer token or cookie.
 function requireAuth(event) {
+  let token = null;
+
+  // Check Authorization header first
   const header = event.headers?.authorization || event.headers?.Authorization || "";
   const match  = header.match(/^Bearer (.+)$/);
-  if (!match) {
+  if (match) {
+    token = match[1];
+  } else {
+    // Fall back to cookie
+    const cookieHeader = event.headers?.cookie || event.headers?.Cookie || "";
+    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
+      const [name, value] = cookie.split('=').map(c => c.trim());
+      acc[name] = value;
+      return acc;
+    }, {});
+    token = cookies["facilityops_token"];
+  }
+
+  if (!token) {
     const err = new Error("Unauthorized");
     err.status = 401;
     throw err;
   }
-  const claims = verify(match[1]);
+
+  const claims = verify(token);
   if (!claims) {
     const err = new Error("Unauthorized");
     err.status = 401;

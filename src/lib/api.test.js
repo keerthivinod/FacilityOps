@@ -61,13 +61,7 @@ test('api.get - successful request with direct URL', async () => {
   assert.strictEqual(fetchCall.arguments[0], '/custom/url');
 });
 
-test('api.get - sends auth headers when token is present', async () => {
-  const token = 'fake-token';
-  localStorageMock.getItem.mock.mockImplementation((key) => {
-    if (key === 'facilityops_token') return token;
-    return null;
-  });
-
+test('api.get - does not send explicit auth headers', async () => {
   fetchMock.mock.mockImplementationOnce(async () => ({
     ok: true,
     status: 200,
@@ -77,28 +71,32 @@ test('api.get - sends auth headers when token is present', async () => {
   await api.get('tickets');
 
   const fetchCall = fetchMock.mock.calls[0];
-  assert.strictEqual(fetchCall.arguments[1].headers.Authorization, `Bearer ${token}`);
+  assert.strictEqual(fetchCall.arguments[1], undefined); // Fetch is called without explicit headers for GET
 });
 
 test('api.get - handles 401 Unauthorized', async () => {
   fetchMock.mock.mockImplementationOnce(async () => ({
     ok: false,
     status: 401,
+    json: async () => ({}),
   }));
 
   await assert.rejects(api.get('tickets'), {
     message: 'Session expired'
   });
 
+  // signOut is async now. But wait, handleResponse does not await signOut!
+  // It calls signOut() synchronously and then throws.
   assert.strictEqual(windowMock.location.reload.mock.callCount(), 1);
-  // signOut removes 2 items from localStorage
-  assert.strictEqual(localStorageMock.removeItem.mock.callCount(), 2);
+  // signOut removes 1 item from localStorage (AUTH_KEY)
+  assert.strictEqual(localStorageMock.removeItem.mock.callCount(), 1);
 });
 
 test('api.get - handles non-ok status', async () => {
   fetchMock.mock.mockImplementationOnce(async () => ({
     ok: false,
     status: 500,
+    json: async () => ({}), // Add dummy json just in case
   }));
 
   await assert.rejects(api.get('tickets'), {
