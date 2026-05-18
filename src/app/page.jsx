@@ -204,6 +204,8 @@ function Layout({ user, setUser }) {
     </div>
   );
 
+  const unreadCount = notifs.filter(n => !n.read).length;
+
   return (
     <AppContext.Provider value={P}>
     <aside className="fo-sidebar" aria-label="Main navigation">
@@ -248,10 +250,10 @@ function Layout({ user, setUser }) {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button className="fo-header-btn" onClick={() => goTo("notifications")}
-            aria-label={`Notifications${notifs.filter(n => !n.read).length > 0 ? `, ${notifs.filter(n => !n.read).length} unread` : ""}`}>
+            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}>
             {"\u{1F514}"}
-            {notifs.filter(n => !n.read).length > 0 && (
-              <span className="fo-notif-dot" aria-hidden="true">{notifs.filter(n => !n.read).length}</span>
+            {unreadCount > 0 && (
+              <span className="fo-notif-dot" aria-hidden="true">{unreadCount}</span>
             )}
           </button>
           <button className="fo-header-btn fo-header-menu-btn" aria-label="Open module menu" aria-haspopup="dialog"
