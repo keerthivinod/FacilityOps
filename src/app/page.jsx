@@ -51,7 +51,8 @@ export default function AppWrapper() {
   return <Layout user={user} setUser={setUser} />;
 }
 
-function Layout({ user, setUser }) {
+
+function useAppData(user, setUser) {
   const [active, setActive] = useState(getHashPage);
   const [tst, setTst] = useState(null);
 
@@ -189,6 +190,119 @@ function Layout({ user, setUser }) {
 
   const pageLabel = PAGES.find(p => p.id === active)?.label || "FacilityOps";
 
+  return { active, P, filteredPages, bootState, pageLabel, tst, R, goTo, notifs, dbReady };
+}
+
+function Sidebar({ filteredPages, active, goTo, user }) {
+  return (
+<aside className="fo-sidebar" aria-label="Main navigation">
+  <div className="fo-sidebar-brand">
+    <div className="fo-sidebar-brand-icon">{"\u{1F3D7}️"}</div>
+    <div>FacilityOps</div>
+  </div>
+  <nav className="fo-sidebar-nav">
+    {filteredPages.map(p => {
+      const act = active === p.id;
+      return (
+        <button key={p.id}
+          className={"fo-sidebar-item" + (act ? " fo-sidebar-item--active" : "")}
+          onClick={() => goTo(p.id)}
+          aria-current={act ? "page" : undefined}>
+          <span className="fo-sidebar-icon" aria-hidden="true">{p.icon}</span>
+          <span className="fo-sidebar-label">{p.label}</span>
+        </button>
+      );
+    })}
+  </nav>
+  <div className="fo-sidebar-footer">
+    <div className="fo-sidebar-user-name">{user.name}</div>
+    <div className="fo-sidebar-user-role">{user.role.replace("_", " ").toUpperCase()}</div>
+  </div>
+</aside>
+  );
+}
+
+function Header({ user, pageLabel, dbReady, notifs, goTo }) {
+  return (
+  <>
+  {/* Header */}
+  <div className="fo-header">
+    <div>
+      <div className="fo-header-user">{user.name} {"\u2022"} {user.role.replace("_", " ").toUpperCase()}</div>
+      <div className="fo-header-title">
+        {pageLabel}
+        {!dbReady && <span className="fo-sync-dot" aria-label="Syncing data" title="Syncing data…" />}
+      </div>
+    </div>
+    <div style={{ display: "flex", gap: 12 }}>
+      <button className="fo-header-btn" onClick={() => goTo("notifications")}
+        aria-label={`Notifications${notifs.filter(n => !n.read).length > 0 ? `, ${notifs.filter(n => !n.read).length} unread` : ""}`}>
+        {"\u{1F514}"}
+        {notifs.filter(n => !n.read).length > 0 && (
+          <span className="fo-notif-dot" aria-hidden="true">{notifs.filter(n => !n.read).length}</span>
+        )}
+      </button>
+      <button className="fo-header-btn fo-header-menu-btn" aria-label="Open module menu" aria-haspopup="dialog"
+        onClick={() => document.getElementById("menu").style.display = "flex"}>
+        {"\u2630"}
+      </button>
+    </div>
+  </div>
+  </>
+  );
+}
+
+function BottomNav({ active, goTo }) {
+  return (
+  <>
+  {/* Bottom Nav */}
+  <nav className="fo-bottom-nav" aria-label="Main navigation">
+    {BNAV.map(id => {
+      const p = PAGES.find(x => x.id === id);
+      const act = active === id;
+      return (
+        <button key={id} className="fo-bnav-btn" onClick={() => goTo(id)}
+          style={{ color: act ? "#4f46e5" : "#64748b" }}
+          aria-label={p.label} aria-current={act ? "page" : undefined}>
+          <div className={"fo-bnav-icon" + (act ? " fo-bnav-icon--active" : "")} aria-hidden="true">{p.icon}</div>
+          <div className="fo-bnav-label" style={{ fontWeight: act ? 800 : 600 }}>{p.label.split(" ")[0]}</div>
+        </button>
+      );
+    })}
+  </nav>
+  </>
+  );
+}
+
+function MenuOverlay({ filteredPages, goTo }) {
+  return (
+  <>
+  {/* Full Menu Overlay */}
+  <div id="menu" className="fo-menu-overlay" role="dialog" aria-modal="true" aria-label="All modules">
+    <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ color: "#fff", fontSize: 24, fontWeight: 800 }}>All Modules</div>
+      <button aria-label="Close menu"
+        onClick={() => document.getElementById("menu").style.display = "none"}
+        style={{ background: "rgba(255,255,255,.1)", width: 40, height: 40, borderRadius: 20, color: "#fff", fontSize: 20, border: "none", cursor: "pointer" }}>{"\u2715"}</button>
+    </div>
+    <div className="fo-menu-grid" role="list">
+      {filteredPages.map(p => (
+        <button key={p.id} className="fo-menu-item" role="listitem"
+          aria-label={p.label}
+          onClick={() => { goTo(p.id); document.getElementById("menu").style.display = "none"; }}>
+          <div style={{ fontSize: 28 }} aria-hidden="true">{p.icon}</div>
+          <div style={{ fontSize: 11, fontWeight: 700, textAlign: "center" }}>{p.label}</div>
+        </button>
+      ))}
+    </div>
+  </div>
+  </>
+  );
+}
+function Layout({ user, setUser }) {
+  const { active, P, filteredPages, bootState, pageLabel, tst, R, goTo, notifs, dbReady } = useAppData(user, setUser);
+
+
   if (bootState === "loading") return (
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#1e1b4b,#312e81,#1e1b4b)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 16 }}>
       <Spinner />
@@ -206,30 +320,7 @@ function Layout({ user, setUser }) {
 
   return (
     <AppContext.Provider value={P}>
-    <aside className="fo-sidebar" aria-label="Main navigation">
-      <div className="fo-sidebar-brand">
-        <div className="fo-sidebar-brand-icon">{"\u{1F3D7}️"}</div>
-        <div>FacilityOps</div>
-      </div>
-      <nav className="fo-sidebar-nav">
-        {filteredPages.map(p => {
-          const act = active === p.id;
-          return (
-            <button key={p.id}
-              className={"fo-sidebar-item" + (act ? " fo-sidebar-item--active" : "")}
-              onClick={() => goTo(p.id)}
-              aria-current={act ? "page" : undefined}>
-              <span className="fo-sidebar-icon" aria-hidden="true">{p.icon}</span>
-              <span className="fo-sidebar-label">{p.label}</span>
-            </button>
-          );
-        })}
-      </nav>
-      <div className="fo-sidebar-footer">
-        <div className="fo-sidebar-user-name">{user.name}</div>
-        <div className="fo-sidebar-user-role">{user.role.replace("_", " ").toUpperCase()}</div>
-      </div>
-    </aside>
+      <Sidebar filteredPages={filteredPages} active={active} goTo={goTo} user={user} />
     <div className="fo-shell">
       {tst && (
         <div className={`fo-toast fo-toast--${tst.type || "success"}`}>
@@ -238,28 +329,7 @@ function Layout({ user, setUser }) {
       )}
 
       {/* Header */}
-      <div className="fo-header">
-        <div>
-          <div className="fo-header-user">{user.name} {"\u2022"} {user.role.replace("_", " ").toUpperCase()}</div>
-          <div className="fo-header-title">
-            {pageLabel}
-            {!dbReady && <span className="fo-sync-dot" aria-label="Syncing data" title="Syncing data…" />}
-          </div>
-        </div>
-        <div style={{ display: "flex", gap: 12 }}>
-          <button className="fo-header-btn" onClick={() => goTo("notifications")}
-            aria-label={`Notifications${notifs.filter(n => !n.read).length > 0 ? `, ${notifs.filter(n => !n.read).length} unread` : ""}`}>
-            {"\u{1F514}"}
-            {notifs.filter(n => !n.read).length > 0 && (
-              <span className="fo-notif-dot" aria-hidden="true">{notifs.filter(n => !n.read).length}</span>
-            )}
-          </button>
-          <button className="fo-header-btn fo-header-menu-btn" aria-label="Open module menu" aria-haspopup="dialog"
-            onClick={() => document.getElementById("menu").style.display = "flex"}>
-            {"\u2630"}
-          </button>
-        </div>
-      </div>
+      <Header user={user} pageLabel={pageLabel} dbReady={dbReady} notifs={notifs} goTo={goTo} />
 
       {/* Main Content — key resets the error boundary on every navigation */}
       <main className="fo-content">
@@ -269,40 +339,10 @@ function Layout({ user, setUser }) {
       </main>
 
       {/* Bottom Nav */}
-      <nav className="fo-bottom-nav" aria-label="Main navigation">
-        {BNAV.map(id => {
-          const p = PAGES.find(x => x.id === id);
-          const act = active === id;
-          return (
-            <button key={id} className="fo-bnav-btn" onClick={() => goTo(id)}
-              style={{ color: act ? "#4f46e5" : "#64748b" }}
-              aria-label={p.label} aria-current={act ? "page" : undefined}>
-              <div className={"fo-bnav-icon" + (act ? " fo-bnav-icon--active" : "")} aria-hidden="true">{p.icon}</div>
-              <div className="fo-bnav-label" style={{ fontWeight: act ? 800 : 600 }}>{p.label.split(" ")[0]}</div>
-            </button>
-          );
-        })}
-      </nav>
+      <BottomNav active={active} goTo={goTo} />
 
       {/* Full Menu Overlay */}
-      <div id="menu" className="fo-menu-overlay" role="dialog" aria-modal="true" aria-label="All modules">
-        <div style={{ padding: "20px 20px 0", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ color: "#fff", fontSize: 24, fontWeight: 800 }}>All Modules</div>
-          <button aria-label="Close menu"
-            onClick={() => document.getElementById("menu").style.display = "none"}
-            style={{ background: "rgba(255,255,255,.1)", width: 40, height: 40, borderRadius: 20, color: "#fff", fontSize: 20, border: "none", cursor: "pointer" }}>{"\u2715"}</button>
-        </div>
-        <div className="fo-menu-grid" role="list">
-          {filteredPages.map(p => (
-            <button key={p.id} className="fo-menu-item" role="listitem"
-              aria-label={p.label}
-              onClick={() => { goTo(p.id); document.getElementById("menu").style.display = "none"; }}>
-              <div style={{ fontSize: 28 }} aria-hidden="true">{p.icon}</div>
-              <div style={{ fontSize: 11, fontWeight: 700, textAlign: "center" }}>{p.label}</div>
-            </button>
-          ))}
-        </div>
-      </div>
+      <MenuOverlay filteredPages={filteredPages} goTo={goTo} />
     </div>
     </AppContext.Provider>
   );
