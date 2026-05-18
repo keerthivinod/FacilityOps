@@ -142,108 +142,118 @@ SUMMARY:
 Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measures 4) Accountability 5) Actionable recommendations`;
 }
 
-function generateLocalResponse(query, P) {
-    const q = query.toLowerCase();
+function getIncidentResponse(P) {
+    return { sections: [
+        { icon: "\u{1F50D}", title: "ROOT CAUSE ANALYSIS - INCIDENTS", content: null },
+        ...P.incidents.map(i => ({
+            title: `${i.type} (${i.id}) at ${i.loc}`,
+            items: [
+                `Severity: ${i.sev.toUpperCase()}`,
+                `RCA: ${i.rca || "Investigation pending"}`,
+                `Preventive: ${i.preventive || "To be determined"}`,
+                `Status: ${i.status}`
+            ]
+        })),
+        { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
+            "Complete pending investigations immediately",
+            "Implement all preventive measures listed",
+            "Schedule monthly safety audits",
+            "Review vendor SLAs for critical equipment"
+        ]}
+    ]};
+}
+
+function getCostResponse(P) {
+    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
+    const byCategory = {};
+    P.tickets.filter(t => t.cost).forEach(t => { const c = t.category || "Other"; byCategory[c] = (byCategory[c] || 0) + t.cost; });
+    return { sections: [
+        { icon: "\u{1F4B0}", title: "COST ANALYSIS", items: [`Total Repair Cost: Rs.${totalCost.toLocaleString()}`] },
+        { title: "By Category", items: Object.entries(byCategory).map(([k, v]) => `${k}: Rs.${v.toLocaleString()}`) },
+        { title: "AMC Investments", items: P.vendors.map(v => `${v.name}: Rs.${v.amcVal.toLocaleString()}/year (${v.status})`) },
+        { content: `Total AMC: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` },
+        { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
+            "Prioritize AMC renewals for expiring contracts",
+            "Budget for preventive maintenance to reduce emergency costs",
+            "Track cost per asset for ROI analysis"
+        ]}
+    ]};
+}
+
+function getAttentionResponse(P) {
+    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    const overdueAssets = P.assets.filter(a => a.status === "overdue");
+    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
+    const lowStock = P.inventory.filter(i => i.qty < i.min);
+    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
+    return { sections: [
+        { icon: "\u{1F6A8}", title: "IMMEDIATE ATTENTION REQUIRED" },
+        { title: `Critical Tickets (${criticalTickets.length})`, items: criticalTickets.map(t => `${t.asset}: ${t.problem} [${t.status}]`), empty: "None" },
+        { title: `Overdue Assets (${overdueAssets.length})`, items: overdueAssets.map(a => `${a.name} at ${a.loc} (Last: ${a.last})`) },
+        { title: `Overdue Tasks (${overdueTasks.length})`, items: overdueTasks.map(t => `${t.asset}: ${t.task} (Due: ${t.due})`) },
+        { title: `Low Inventory (${lowStock.length})`, items: lowStock.map(i => `${i.name}: ${i.qty}/${i.min} ${i.unit}`) },
+        { title: `Expiring AMCs (${expiringAMC.length})`, items: expiringAMC.map(v => `${v.name}: expires ${v.amcEnd}`) }
+    ]};
+}
+
+function getStaffResponse(P) {
+    const sorted = [...P.staff].filter(s => s.tasksCompleted > 0).sort((a, b) => b.rating - a.rating);
+    return { sections: [
+        { icon: "\u{1F465}", title: "STAFF PERFORMANCE ANALYSIS" },
+        ...sorted.map((s, i) => ({
+            title: `${i + 1}. ${s.name} (${s.role})`,
+            items: [`Tasks: ${s.tasksCompleted} | Avg TAT: ${s.avgTAT}min | Rating: \u2B50${s.rating} | Status: ${s.status}`]
+        })),
+        { icon: "\u{1F3C6}", title: "TOP PERFORMER", content: `${sorted[0]?.name} with ${sorted[0]?.rating} rating` },
+        { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
+            "Recognize top performers",
+            "Provide training for lower-rated staff",
+            "Balance workload distribution",
+            "Set TAT improvement targets"
+        ]}
+    ]};
+}
+
+function getVendorResponse(P) {
+    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
+    return { sections: [
+        { icon: "\u{1F91D}", title: "VENDOR & AMC ANALYSIS" },
+        ...P.vendors.map(v => ({
+            title: `${v.name} (${v.cat})`,
+            items: [
+                `AMC: Rs.${v.amcVal.toLocaleString()} | Expires: ${v.amcEnd} | Status: ${v.status}`,
+                `Last Visit: ${v.lastVisit} | Contact: ${v.contact} (${v.phone})`
+            ]
+        })),
+        { icon: "\u26A0\uFE0F", title: "ACTION REQUIRED", items: expiringAMC.length > 0 ? expiringAMC.map(v => `RENEW: ${v.name} AMC expiring ${v.amcEnd}`) : ["All AMCs current"] },
+        { content: `Total AMC Investment: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` }
+    ]};
+}
+
+function getPreventiveResponse(P) {
+    return { sections: [
+        { icon: "\u{1F6E1}\uFE0F", title: "PREVENTIVE MEASURES & RECOMMENDATIONS" },
+        { title: "From Incident Analysis", items: P.incidents.filter(i => i.preventive).map(i => `${i.type}: ${i.preventive}`), empty: "No preventive measures documented yet" },
+        { title: "General Recommendations", items: [
+            "Implement daily equipment checklists",
+            "Set up automated maintenance reminders",
+            "Conduct monthly safety drills",
+            "Regular vendor performance reviews",
+            "Maintain critical spare parts inventory",
+            "Cross-train staff on emergency procedures",
+            "Install IoT sensors for real-time monitoring",
+            "Weekly management review of open tickets"
+        ]}
+    ]};
+}
+
+function getDefaultResponse(P) {
     const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
     const criticalTickets = P.tickets.filter(t => t.priority === "critical");
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
     const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
     const lowStock = P.inventory.filter(i => i.qty < i.min);
-    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
-
-    if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
-        return { sections: [
-            { icon: "\u{1F50D}", title: "ROOT CAUSE ANALYSIS - INCIDENTS", content: null },
-            ...P.incidents.map(i => ({
-                title: `${i.type} (${i.id}) at ${i.loc}`,
-                items: [
-                    `Severity: ${i.sev.toUpperCase()}`,
-                    `RCA: ${i.rca || "Investigation pending"}`,
-                    `Preventive: ${i.preventive || "To be determined"}`,
-                    `Status: ${i.status}`
-                ]
-            })),
-            { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
-                "Complete pending investigations immediately",
-                "Implement all preventive measures listed",
-                "Schedule monthly safety audits",
-                "Review vendor SLAs for critical equipment"
-            ]}
-        ]};
-    }
-    if (q.includes("cost") || q.includes("expense") || q.includes("budget")) {
-        const byCategory = {};
-        P.tickets.filter(t => t.cost).forEach(t => { const c = t.category || "Other"; byCategory[c] = (byCategory[c] || 0) + t.cost; });
-        return { sections: [
-            { icon: "\u{1F4B0}", title: "COST ANALYSIS", items: [`Total Repair Cost: Rs.${totalCost.toLocaleString()}`] },
-            { title: "By Category", items: Object.entries(byCategory).map(([k, v]) => `${k}: Rs.${v.toLocaleString()}`) },
-            { title: "AMC Investments", items: P.vendors.map(v => `${v.name}: Rs.${v.amcVal.toLocaleString()}/year (${v.status})`) },
-            { content: `Total AMC: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` },
-            { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
-                "Prioritize AMC renewals for expiring contracts",
-                "Budget for preventive maintenance to reduce emergency costs",
-                "Track cost per asset for ROI analysis"
-            ]}
-        ]};
-    }
-    if (q.includes("attention") || q.includes("priority") || q.includes("urgent") || q.includes("action")) {
-        return { sections: [
-            { icon: "\u{1F6A8}", title: "IMMEDIATE ATTENTION REQUIRED" },
-            { title: `Critical Tickets (${criticalTickets.length})`, items: criticalTickets.map(t => `${t.asset}: ${t.problem} [${t.status}]`), empty: "None" },
-            { title: `Overdue Assets (${overdueAssets.length})`, items: overdueAssets.map(a => `${a.name} at ${a.loc} (Last: ${a.last})`) },
-            { title: `Overdue Tasks (${overdueTasks.length})`, items: overdueTasks.map(t => `${t.asset}: ${t.task} (Due: ${t.due})`) },
-            { title: `Low Inventory (${lowStock.length})`, items: lowStock.map(i => `${i.name}: ${i.qty}/${i.min} ${i.unit}`) },
-            { title: `Expiring AMCs (${expiringAMC.length})`, items: expiringAMC.map(v => `${v.name}: expires ${v.amcEnd}`) }
-        ]};
-    }
-    if (q.includes("technician") || q.includes("staff") || q.includes("perform") || q.includes("best")) {
-        const sorted = [...P.staff].filter(s => s.tasksCompleted > 0).sort((a, b) => b.rating - a.rating);
-        return { sections: [
-            { icon: "\u{1F465}", title: "STAFF PERFORMANCE ANALYSIS" },
-            ...sorted.map((s, i) => ({
-                title: `${i + 1}. ${s.name} (${s.role})`,
-                items: [`Tasks: ${s.tasksCompleted} | Avg TAT: ${s.avgTAT}min | Rating: \u2B50${s.rating} | Status: ${s.status}`]
-            })),
-            { icon: "\u{1F3C6}", title: "TOP PERFORMER", content: `${sorted[0]?.name} with ${sorted[0]?.rating} rating` },
-            { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
-                "Recognize top performers",
-                "Provide training for lower-rated staff",
-                "Balance workload distribution",
-                "Set TAT improvement targets"
-            ]}
-        ]};
-    }
-    if (q.includes("vendor") || q.includes("amc")) {
-        return { sections: [
-            { icon: "\u{1F91D}", title: "VENDOR & AMC ANALYSIS" },
-            ...P.vendors.map(v => ({
-                title: `${v.name} (${v.cat})`,
-                items: [
-                    `AMC: Rs.${v.amcVal.toLocaleString()} | Expires: ${v.amcEnd} | Status: ${v.status}`,
-                    `Last Visit: ${v.lastVisit} | Contact: ${v.contact} (${v.phone})`
-                ]
-            })),
-            { icon: "\u26A0\uFE0F", title: "ACTION REQUIRED", items: expiringAMC.length > 0 ? expiringAMC.map(v => `RENEW: ${v.name} AMC expiring ${v.amcEnd}`) : ["All AMCs current"] },
-            { content: `Total AMC Investment: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` }
-        ]};
-    }
-    if (q.includes("prevent") || q.includes("future") || q.includes("measure")) {
-        return { sections: [
-            { icon: "\u{1F6E1}\uFE0F", title: "PREVENTIVE MEASURES & RECOMMENDATIONS" },
-            { title: "From Incident Analysis", items: P.incidents.filter(i => i.preventive).map(i => `${i.type}: ${i.preventive}`), empty: "No preventive measures documented yet" },
-            { title: "General Recommendations", items: [
-                "Implement daily equipment checklists",
-                "Set up automated maintenance reminders",
-                "Conduct monthly safety drills",
-                "Regular vendor performance reviews",
-                "Maintain critical spare parts inventory",
-                "Cross-train staff on emergency procedures",
-                "Install IoT sensors for real-time monitoring",
-                "Weekly management review of open tickets"
-            ]}
-        ]};
-    }
 
     return { sections: [
         { icon: "\u{1F9E0}", title: "FACILITYOPS ANALYSIS" },
@@ -265,6 +275,31 @@ function generateLocalResponse(query, P) {
         ]},
         { content: "Try asking about root causes, cost breakdown, staff performance, or vendor AMC status." }
     ]};
+}
+
+function generateLocalResponse(query, P) {
+    const q = query.toLowerCase();
+
+    if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
+        return getIncidentResponse(P);
+    }
+    if (q.includes("cost") || q.includes("expense") || q.includes("budget")) {
+        return getCostResponse(P);
+    }
+    if (q.includes("attention") || q.includes("priority") || q.includes("urgent") || q.includes("action")) {
+        return getAttentionResponse(P);
+    }
+    if (q.includes("technician") || q.includes("staff") || q.includes("perform") || q.includes("best")) {
+        return getStaffResponse(P);
+    }
+    if (q.includes("vendor") || q.includes("amc")) {
+        return getVendorResponse(P);
+    }
+    if (q.includes("prevent") || q.includes("future") || q.includes("measure")) {
+        return getPreventiveResponse(P);
+    }
+
+    return getDefaultResponse(P);
 }
 
 // --- Rich markdown-to-JSX renderer ---
