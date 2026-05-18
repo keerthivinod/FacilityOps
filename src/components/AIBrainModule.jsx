@@ -144,13 +144,56 @@ Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measur
 
 function generateLocalResponse(query, P) {
     const q = query.toLowerCase();
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
-    const overdueAssets = P.assets.filter(a => a.status === "overdue");
-    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const lowStock = P.inventory.filter(i => i.qty < i.min);
-    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
+
+    // Optimize: Compute in single passes rather than multiple filters/reduces
+    let openTicketsList = [];
+    let criticalTicketsList = [];
+    let totalCost = 0;
+
+    for (let i = 0; i < P.tickets.length; i++) {
+        const t = P.tickets[i];
+        if (t.status === "open" || t.status === "in-progress") {
+            openTicketsList.push(t);
+        }
+        if (t.priority === "critical") {
+            criticalTicketsList.push(t);
+        }
+        if (t.cost) {
+            totalCost += t.cost;
+        }
+    }
+
+    let overdueAssetsList = [];
+    for (let i = 0; i < P.assets.length; i++) {
+        const a = P.assets[i];
+        if (a.status === "overdue") {
+            overdueAssetsList.push(a);
+        }
+    }
+
+    let overdueTasksList = [];
+    for (let i = 0; i < P.tasks.length; i++) {
+        const t = P.tasks[i];
+        if (t.status === "overdue") {
+            overdueTasksList.push(t);
+        }
+    }
+
+    let lowStockList = [];
+    for (let i = 0; i < P.inventory.length; i++) {
+        const inv = P.inventory[i];
+        if (inv.qty < inv.min) {
+            lowStockList.push(inv);
+        }
+    }
+
+    let expiringAMCList = [];
+    for (let i = 0; i < P.vendors.length; i++) {
+        const v = P.vendors[i];
+        if (v.status === "expiring") {
+            expiringAMCList.push(v);
+        }
+    }
 
     if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
         return { sections: [
@@ -174,12 +217,27 @@ function generateLocalResponse(query, P) {
     }
     if (q.includes("cost") || q.includes("expense") || q.includes("budget")) {
         const byCategory = {};
-        P.tickets.filter(t => t.cost).forEach(t => { const c = t.category || "Other"; byCategory[c] = (byCategory[c] || 0) + t.cost; });
+        for (let i = 0; i < P.tickets.length; i++) {
+            const t = P.tickets[i];
+            if (t.cost) {
+                const c = t.category || "Other";
+                byCategory[c] = (byCategory[c] || 0) + t.cost;
+            }
+        }
+
+        let totalAmc = 0;
+        const vendorItems = [];
+        for (let i = 0; i < P.vendors.length; i++) {
+            const v = P.vendors[i];
+            vendorItems.push(`${v.name}: Rs.${v.amcVal.toLocaleString()}/year (${v.status})`);
+            totalAmc += v.amcVal;
+        }
+
         return { sections: [
             { icon: "\u{1F4B0}", title: "COST ANALYSIS", items: [`Total Repair Cost: Rs.${totalCost.toLocaleString()}`] },
             { title: "By Category", items: Object.entries(byCategory).map(([k, v]) => `${k}: Rs.${v.toLocaleString()}`) },
-            { title: "AMC Investments", items: P.vendors.map(v => `${v.name}: Rs.${v.amcVal.toLocaleString()}/year (${v.status})`) },
-            { content: `Total AMC: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` },
+            { title: "AMC Investments", items: vendorItems },
+            { content: `Total AMC: Rs.${totalAmc.toLocaleString()}/year` },
             { icon: "\u{1F4CB}", title: "RECOMMENDATIONS", items: [
                 "Prioritize AMC renewals for expiring contracts",
                 "Budget for preventive maintenance to reduce emergency costs",
@@ -190,11 +248,11 @@ function generateLocalResponse(query, P) {
     if (q.includes("attention") || q.includes("priority") || q.includes("urgent") || q.includes("action")) {
         return { sections: [
             { icon: "\u{1F6A8}", title: "IMMEDIATE ATTENTION REQUIRED" },
-            { title: `Critical Tickets (${criticalTickets.length})`, items: criticalTickets.map(t => `${t.asset}: ${t.problem} [${t.status}]`), empty: "None" },
-            { title: `Overdue Assets (${overdueAssets.length})`, items: overdueAssets.map(a => `${a.name} at ${a.loc} (Last: ${a.last})`) },
-            { title: `Overdue Tasks (${overdueTasks.length})`, items: overdueTasks.map(t => `${t.asset}: ${t.task} (Due: ${t.due})`) },
-            { title: `Low Inventory (${lowStock.length})`, items: lowStock.map(i => `${i.name}: ${i.qty}/${i.min} ${i.unit}`) },
-            { title: `Expiring AMCs (${expiringAMC.length})`, items: expiringAMC.map(v => `${v.name}: expires ${v.amcEnd}`) }
+            { title: `Critical Tickets (${criticalTicketsList.length})`, items: criticalTicketsList.map(t => `${t.asset}: ${t.problem} [${t.status}]`), empty: "None" },
+            { title: `Overdue Assets (${overdueAssetsList.length})`, items: overdueAssetsList.map(a => `${a.name} at ${a.loc} (Last: ${a.last})`) },
+            { title: `Overdue Tasks (${overdueTasksList.length})`, items: overdueTasksList.map(t => `${t.asset}: ${t.task} (Due: ${t.due})`) },
+            { title: `Low Inventory (${lowStockList.length})`, items: lowStockList.map(i => `${i.name}: ${i.qty}/${i.min} ${i.unit}`) },
+            { title: `Expiring AMCs (${expiringAMCList.length})`, items: expiringAMCList.map(v => `${v.name}: expires ${v.amcEnd}`) }
         ]};
     }
     if (q.includes("technician") || q.includes("staff") || q.includes("perform") || q.includes("best")) {
@@ -224,7 +282,7 @@ function generateLocalResponse(query, P) {
                     `Last Visit: ${v.lastVisit} | Contact: ${v.contact} (${v.phone})`
                 ]
             })),
-            { icon: "\u26A0\uFE0F", title: "ACTION REQUIRED", items: expiringAMC.length > 0 ? expiringAMC.map(v => `RENEW: ${v.name} AMC expiring ${v.amcEnd}`) : ["All AMCs current"] },
+            { icon: "⚠️", title: "ACTION REQUIRED", items: expiringAMCList.length > 0 ? expiringAMCList.map(v => `RENEW: ${v.name} AMC expiring ${v.amcEnd}`) : ["All AMCs current"] },
             { content: `Total AMC Investment: Rs.${P.vendors.reduce((s, v) => s + v.amcVal, 0).toLocaleString()}/year` }
         ]};
     }
@@ -248,11 +306,11 @@ function generateLocalResponse(query, P) {
     return { sections: [
         { icon: "\u{1F9E0}", title: "FACILITYOPS ANALYSIS" },
         { title: "Current Status", items: [
-            `${openTickets.length} open tickets requiring attention`,
-            `${criticalTickets.length} critical issues`,
-            `${overdueAssets.length} assets overdue for maintenance`,
-            `${overdueTasks.length} overdue maintenance tasks`,
-            `${lowStock.length} low stock items`,
+            `${openTicketsList.length} open tickets requiring attention`,
+            `${criticalTicketsList.length} critical issues`,
+            `${overdueAssetsList.length} assets overdue for maintenance`,
+            `${overdueTasksList.length} overdue maintenance tasks`,
+            `${lowStockList.length} low stock items`,
             `Total costs: Rs.${totalCost.toLocaleString()}`
         ]},
         { title: "Try asking about", items: [
