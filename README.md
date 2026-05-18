@@ -48,9 +48,8 @@ Additionally, FacilityOps integrates an **AI Brain** to help facility managers q
    \`\`\`
 
    **Default Accounts:**
-   - Facility Manager: `keerthi` / `facility123`
-   - Technician: `rajan` / `electrician123`
-   - Management: `management` / `admin123`
+   - Default user accounts (`keerthi`, `rajan`, `management`) are generated during the seed process and their initial random passwords will be printed to the console.
+   - All seeded demo users will be forced to change their passwords upon first login.
    - Platform Admin: `admin` / `admin` (must change password on first login)
 
 4. **Run the Development Server:**
@@ -86,4 +85,4 @@ FacilityOps is optimized to be deployed on [Netlify](https://www.netlify.com/).
 
 ## Support
 
-If you encounter any issues, please refer to the documentation or contact support. Default password support is provided as `facility123`.
+If you encounter any issues, please refer to the documentation or contact support.
