@@ -201,7 +201,11 @@ self.addEventListener('pushsubscriptionchange', (event) => {
       .then((subscription) => {
         // Send new subscription to your server
         console.log('[SW] New push subscription:', subscription);
-        // TODO: Send subscription to server
+        return fetch('/.netlify/functions/push-subscriptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ subscription })
+        }).catch(err => console.error('[SW] Failed to send new subscription to server:', err));
       })
   );
 });
