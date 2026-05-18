@@ -118,3 +118,15 @@ test('api.get - handles success: false in JSON', async () => {
     message: errorMsg
   });
 });
+
+test('api.get - handles success: false in JSON with default error message', async () => {
+  fetchMock.mock.mockImplementationOnce(async () => ({
+    ok: true,
+    status: 200,
+    json: async () => ({ success: false }),
+  }));
+
+  await assert.rejects(api.get('tickets'), {
+    message: 'API tickets failed'
+  });
+});
