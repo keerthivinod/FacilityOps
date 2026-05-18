@@ -17,8 +17,18 @@ export default function Rpt({ P }) {
   const priorityDist = useMemo(() => {
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
+
+    // Single pass over tickets to build frequency map
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (let i = 0; i < P.tickets.length; i++) {
+      const p = P.tickets[i].priority;
+      if (counts[p] !== undefined) {
+        counts[p]++;
+      }
+    }
+
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = counts[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
