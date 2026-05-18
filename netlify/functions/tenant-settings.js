@@ -1,9 +1,9 @@
 // GET / PUT — read or update the current tenant's settings (AI key, branding, locale).
-// AI key is stored in plaintext for now (TODO: encrypt at rest with crypto.subtle).
 
 const { query } = require("./lib/db");
 const { ok, fail, preflight } = require("./lib/respond");
 const { requireTenant } = require("./lib/auth");
+const { encrypt, decrypt } = require("./lib/crypto");
 
 const ADMIN_ROLES = new Set(["owner", "admin", "facility_manager"]);
 
@@ -44,13 +44,17 @@ exports.handler = async (event) => {
             [claims.tenantId]
           );
         }
+        if (rows[0] && rows[0].openai_api_key) {
+          rows[0].openai_api_key = await decrypt(rows[0].openai_api_key);
+        }
         return ok(toApi(rows[0], isAdmin));
       }
       case "PUT": {
         if (!isAdmin) return fail(403, "Only admins can change organization settings.");
         const body = JSON.parse(event.body || "{}");
+        const encryptedKey = await encrypt(body.openaiApiKey);
         const fields = {
-          openai_api_key:  body.openaiApiKey,
+          openai_api_key:  encryptedKey,
           ai_model:        body.aiModel,
           logo_url:        body.logoUrl,
           brand_color:     body.brandColor,
@@ -85,7 +89,13 @@ exports.handler = async (event) => {
              RETURNING *`,
             vals
           );
+          if (retry[0] && retry[0].openai_api_key) {
+            retry[0].openai_api_key = await decrypt(retry[0].openai_api_key);
+          }
           return ok(toApi(retry[0], true));
+        }
+        if (rows[0] && rows[0].openai_api_key) {
+          rows[0].openai_api_key = await decrypt(rows[0].openai_api_key);
         }
         return ok(toApi(rows[0], true));
       }
