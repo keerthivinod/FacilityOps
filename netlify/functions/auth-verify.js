@@ -71,7 +71,11 @@ exports.handler = async (event) => {
       mustChangePassword: u.must_change_password,
     };
 
-    return ok({ token: sign(user), user });
+    const token = sign(user);
+    const isProd = process.env.NODE_ENV === "production" || process.env.NETLIFY === "true";
+    const cookie = `facilityops_token=${token}; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Strict; Path=/; Max-Age=${8 * 60 * 60}`;
+
+    return ok({ token, user }, null, { "Set-Cookie": cookie });
   } catch (e) {
     console.error("auth-verify error:", e.message);
     return fail(500, "Authentication error");

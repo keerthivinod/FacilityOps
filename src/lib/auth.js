@@ -13,26 +13,24 @@ export async function verifyCredentials(username, password) {
 }
 
 export function saveSession({ token, user }) {
-  localStorage.setItem(TOKEN_KEY, token);
   localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-}
-
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
 }
 
 export function loadSession() {
   try {
     const raw = localStorage.getItem(AUTH_KEY);
-    const tok = localStorage.getItem(TOKEN_KEY);
-    if (!raw || !tok) return null;
+    if (!raw) return null;
     const user = JSON.parse(raw);
     if (!user.email || !user.role) return null;
     return user;
   } catch { return null; }
 }
 
-export function signOut() {
+export async function signOut() {
   localStorage.removeItem(AUTH_KEY);
-  localStorage.removeItem(TOKEN_KEY);
+  try {
+    await fetch("/.netlify/functions/auth-logout", { method: "POST" });
+  } catch (e) {
+    console.error("Logout error", e);
+  }
 }
