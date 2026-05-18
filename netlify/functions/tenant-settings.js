@@ -4,6 +4,7 @@
 const { query } = require("./lib/db");
 const { ok, fail, preflight } = require("./lib/respond");
 const { requireTenant } = require("./lib/auth");
+const { encryptData, decryptData } = require("./lib/crypto");
 
 const ADMIN_ROLES = new Set(["owner", "admin", "facility_manager"]);
 
@@ -44,13 +45,26 @@ exports.handler = async (event) => {
             [claims.tenantId]
           );
         }
-        return ok(toApi(rows[0], isAdmin));
+
+        // Decrypt the API key if it exists
+        const row = { ...rows[0] };
+        if (row.openai_api_key) {
+          row.openai_api_key = await decryptData(row.openai_api_key);
+        }
+
+        return ok(toApi(row, isAdmin));
       }
       case "PUT": {
         if (!isAdmin) return fail(403, "Only admins can change organization settings.");
         const body = JSON.parse(event.body || "{}");
+
+        let encryptedKey = body.openaiApiKey;
+        if (encryptedKey !== undefined) {
+           encryptedKey = await encryptData(body.openaiApiKey);
+        }
+
         const fields = {
-          openai_api_key:  body.openaiApiKey,
+          openai_api_key:  encryptedKey,
           ai_model:        body.aiModel,
           logo_url:        body.logoUrl,
           brand_color:     body.brandColor,
@@ -73,6 +87,7 @@ exports.handler = async (event) => {
            RETURNING *`,
           vals
         );
+        let resultRow = rows[0];
         if (!rows.length) {
           // First update — row didn't exist; create it then re-update.
           await query(
@@ -85,9 +100,15 @@ exports.handler = async (event) => {
              RETURNING *`,
             vals
           );
-          return ok(toApi(retry[0], true));
+          resultRow = retry[0];
         }
-        return ok(toApi(rows[0], true));
+
+        const returnedRow = { ...resultRow };
+        if (returnedRow.openai_api_key) {
+          returnedRow.openai_api_key = await decryptData(returnedRow.openai_api_key);
+        }
+
+        return ok(toApi(returnedRow, true));
       }
       default: return fail(405, "Method not allowed");
     }

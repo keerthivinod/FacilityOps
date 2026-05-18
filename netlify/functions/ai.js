@@ -5,6 +5,7 @@
 const { query } = require("./lib/db");
 const { ok, fail, preflight } = require("./lib/respond");
 const { requireTenant } = require("./lib/auth");
+const { decryptData } = require("./lib/crypto");
 
 exports.handler = async (event) => {
   if (event.httpMethod === "OPTIONS") return preflight();
@@ -18,7 +19,10 @@ exports.handler = async (event) => {
       [claims.tenantId]
     );
 
-    const tenantKey = settings[0]?.openai_api_key;
+    let tenantKey = settings[0]?.openai_api_key;
+    if (tenantKey) {
+      tenantKey = await decryptData(tenantKey);
+    }
     const fallbackKey = process.env.OPENAI_API_KEY;
     const apiKey = tenantKey || fallbackKey;
 
