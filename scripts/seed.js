@@ -7,9 +7,10 @@ require("dotenv").config({ path: ".env.local" });
 const fs = require("fs");
 const bcrypt = require("bcryptjs");
 const initSqlJs = require("sql.js");
+const crypto = require("crypto");
 
 const {
-  TEAM, DEMO_USERS, DEMO_CREDENTIALS,
+  TEAM, DEMO_USERS,
   INIT_ASSETS, INIT_TASKS, INIT_TICKETS, INIT_VENDORS, INIT_INVENTORY,
   INIT_INCIDENTS, INIT_DOCS, INIT_PROJECTS, UTILITY_DATA, NOTIF_LOG,
 } = require("../src/lib/seed-data");
@@ -52,14 +53,14 @@ async function seed() {
     // ─── USERS ───────────────────────────────────────────────────────────────
     console.log("Seeding users...");
     for (const u of DEMO_USERS) {
-      const cred = DEMO_CREDENTIALS.find((x) => x.email === u.email);
-      if (!cred) continue;
-      const hash = await bcrypt.hash(cred.password, 12);
+      const rawPassword = process.env.DEFAULT_USER_PASSWORD || crypto.randomBytes(8).toString("hex");
+      const hash = await bcrypt.hash(rawPassword, 12);
       await run(
         `INSERT OR REPLACE INTO users (id, tenant_id, username, email, password_hash, name, role, initials, dept, must_change_password, is_super_admin, email_verified, active)
          VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-        [u.id, defaultTenantId, cred.username, u.email, hash, u.name, u.role, u.initials, u.dept, 0, 0, 1, 1]
+        [u.id, defaultTenantId, u.username, u.email, hash, u.name, u.role, u.initials, u.dept, 1, 0, 1, 1]
       );
+      console.log(`      ✓ Provisioned user: ${u.username} (Password: ${rawPassword})`);
     }
 
     // ─── TEAM ────────────────────────────────────────────────────────────────

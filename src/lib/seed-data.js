@@ -14,15 +14,9 @@ const TEAM = [
 ];
 
 const DEMO_USERS = [
-  { id: "u1", name: "Keerthi Vinod",  email: "keerthivinod@gmail.com",      role: "facility_manager", initials: "KV", dept: "Facility" },
-  { id: "u2", name: "Rajan Kumar",    email: "rajan@vaidyagrama.com",        role: "technician",       initials: "RK", dept: "Maintenance" },
-  { id: "u3", name: "Dr. Priya Nair", email: "management@vaidyagrama.com",   role: "management",       initials: "PN", dept: "Management" },
-];
-
-const DEMO_CREDENTIALS = [
-  { username: "keerthi",    email: "keerthivinod@gmail.com",    password: "facility123" },
-  { username: "rajan",      email: "rajan@vaidyagrama.com",      password: "electrician123" },
-  { username: "management", email: "management@vaidyagrama.com", password: "admin123" },
+  { id: "u1", username: "keerthi",    name: "Keerthi Vinod",  email: "keerthivinod@gmail.com",      role: "facility_manager", initials: "KV", dept: "Facility" },
+  { id: "u2", username: "rajan",      name: "Rajan Kumar",    email: "rajan@vaidyagrama.com",        role: "technician",       initials: "RK", dept: "Maintenance" },
+  { id: "u3", username: "management", name: "Dr. Priya Nair", email: "management@vaidyagrama.com",   role: "management",       initials: "PN", dept: "Management" },
 ];
 
 const INIT_ASSETS = [];
@@ -46,7 +40,7 @@ const UTILITY_DATA = [];
 const NOTIF_LOG = [];
 
 module.exports = {
-  TEAM, DEMO_USERS, DEMO_CREDENTIALS,
+  TEAM, DEMO_USERS,
   INIT_ASSETS, INIT_TASKS, INIT_TICKETS, INIT_VENDORS, INIT_INVENTORY,
   INIT_INCIDENTS, INIT_DOCS, INIT_PROJECTS, UTILITY_DATA, NOTIF_LOG,
 };

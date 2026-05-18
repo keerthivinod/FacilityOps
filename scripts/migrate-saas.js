@@ -195,7 +195,7 @@ CREATE INDEX IF NOT EXISTS idx_password_reset_user ON password_reset_tokens(user
     console.log("\n✅ SaaS migration complete.\n");
     console.log("   Demo tenant ID: " + DEMO_TENANT_ID);
     console.log("   Super-admin   : admin / admin (must change password)");
-    console.log("   Demo logins   : keerthi/facility123, rajan/electrician123, management/admin123");
+    console.log("   Note: Default user accounts are generated when you run the seed script.");
     await saveDb();
   } catch (e) {
     console.error("\n❌ Migration failed:", e.message);
