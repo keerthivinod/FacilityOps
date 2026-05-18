@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { verifyCredentials, saveSession } from "./auth.js";
+import { generateQRCodeGrid } from "./data-utils.js";
 
 export const ESCALATION_RULES = [{ level: 1, label: "Staff/Technician", time: 0, desc: "Auto-assigned to matched technician" }, { level: 2, label: "Facility Admin (Lakshmi N)", time: 20, desc: "Alert if unacknowledged in 20 min" }, { level: 3, label: "Facility Manager (Keerthi Vinod)", time: 60, desc: "SLA breach alert at 60 min" }, { level: 4, label: "Ops Head (Kichu/Ramanandan/Dr.Ramkumar)", time: 480, desc: "Incident report end-of-day" }];
 export const TAT_BENCHMARKS = { plumber: 30, carpenter: 45, electrician: 25, it: 20, helper: 15 };
@@ -14,7 +15,7 @@ export const Badge = ({ label, color, bg }) => <span style={bs(color, bg)}>{labe
 export const SB = ({ s }) => { const m = { overdue: ["#dc2626", "#fef2f2"], "due-soon": ["#d97706", "#fffbeb"], healthy: ["#16a34a", "#f0fdf4"], upcoming: ["#2563eb", "#eff6ff"], scheduled: ["#7c3aed", "#f5f3ff"], open: ["#dc2626", "#fef2f2"], "in-progress": ["#d97706", "#fffbeb"], resolved: ["#16a34a", "#f0fdf4"], closed: ["#6b7280", "#f9fafb"], active: ["#16a34a", "#f0fdf4"], expiring: ["#d97706", "#fffbeb"], investigating: ["#d97706", "#fffbeb"], available: ["#16a34a", "#f0fdf4"], busy: ["#d97706", "#fffbeb"], "on-leave": ["#6b7280", "#f9fafb"], planned: ["#2563eb", "#eff6ff"] }; const [c, bg] = m[s] || ["#6b7280", "#f9fafb"]; return <Badge label={s === "due-soon" ? "Due Soon" : s === "in-progress" ? "In Progress" : s === "on-leave" ? "On Leave" : s.charAt(0).toUpperCase() + s.slice(1)} color={c} bg={bg} />; };
 export const PD = ({ p }) => <span style={{ width: 8, height: 8, borderRadius: 4, background: priorityColor(p), display: "inline-block", marginRight: 4 }} />;
 export const Spinner = () => <div style={{ width: 24, height: 24, border: "3px solid #e5e7eb", borderTop: "3px solid #4f46e5", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />;
-export function QRCode({ data, size = 80 }) { const h = data.split("").reduce((a, c) => ((a << 5) - a) + c.charCodeAt(0), 0); const cells = []; for (let y = 0; y < 9; y++)for (let x = 0; x < 9; x++) { if (((h * (x + 1) * (y + 1)) % 3) !== 0 || (x < 3 && y < 3) || (x > 5 && y < 3) || (x < 3 && y > 5)) cells.push(<rect key={`${x}-${y}`} x={x * 10 + 10} y={y * 10 + 10} width={9} height={9} fill="#0f172a" rx={1} />); } return <svg width={size} height={size} viewBox="0 0 100 110"><rect width="100" height="100" fill="#fff" rx={6} />{cells}<text x="50" y="108" textAnchor="middle" fontSize="6" fill="#94a3b8">{data}</text></svg>; }
+export function QRCode({ data, size = 80 }) { const grid = generateQRCodeGrid(data); const cells = grid.map(({ x, y }) => <rect key={`${x}-${y}`} x={x * 10 + 10} y={y * 10 + 10} width={9} height={9} fill="#0f172a" rx={1} />); return <svg width={size} height={size} viewBox="0 0 100 110"><rect width="100" height="100" fill="#fff" rx={6} />{cells}<text x="50" y="108" textAnchor="middle" fontSize="6" fill="#94a3b8">{data}</text></svg>; }
 
 export const LoginScreen = ({ onLogin }) => {
     const [ld, setLd] = useState(false);
