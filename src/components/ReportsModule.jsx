@@ -4,21 +4,43 @@ import { cd } from "@/lib/data";
 
 export default function Rpt({ P }) {
   // Memoize top level ticket/task computations to avoid O(N) operations on every render
+  // ⚡ Bolt Optimization: Replace multiple .filter() passes with a single loop
   const stats = useMemo(() => {
-    const totalTickets = P.tickets.length;
-    const resolved = P.tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-    const tatList = P.tickets.filter(t => t.tatMins);
-    const avgTAT = tatList.reduce((a, t) => a + t.tatMins, 0) / (tatList.length || 1);
-    const overdueCount = P.tasks.filter(t => t.status === "overdue").length;
-    return { totalTickets, resolved, avgTAT, overdueCount };
+    let resolved = 0;
+    let tatSum = 0;
+    let tatCount = 0;
+
+    for (let i = 0; i < P.tickets.length; i++) {
+        const t = P.tickets[i];
+        if (t.status === "resolved" || t.status === "closed") resolved++;
+        if (t.tatMins) {
+            tatSum += t.tatMins;
+            tatCount++;
+        }
+    }
+    const avgTAT = tatSum / (tatCount || 1);
+
+    let overdueCount = 0;
+    for (let i = 0; i < P.tasks.length; i++) {
+        if (P.tasks[i].status === "overdue") overdueCount++;
+    }
+
+    return { totalTickets: P.tickets.length, resolved, avgTAT, overdueCount };
   }, [P.tickets, P.tasks]);
 
   // Memoize priority distributions
+  // ⚡ Bolt Optimization: Replace O(N * Priorities) filtering with O(N) hash map accumulation
   const priorityDist = useMemo(() => {
+    const counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (let i = 0; i < P.tickets.length; i++) {
+        if (counts[P.tickets[i].priority] !== undefined) {
+            counts[P.tickets[i].priority]++;
+        }
+    }
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = counts[p];
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
