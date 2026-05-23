@@ -169,24 +169,50 @@ function AlertPill({ count, label, onClick, icon: Icon, tone }) {
 }
 
 export default function Dash({ P }) {
+  // ⚡ Bolt Optimization: Replaced multiple array filtering and mapping with single-pass loops
+  // Prevents O(N*M) operations on render by calculating all ticket and task metrics in one go.
   const m = useMemo(() => {
-    const openT       = P.tickets.filter(x => x.status === "open").length;
-    const inProgress  = P.tickets.filter(x => x.status === "in-progress").length;
-    const resolved    = P.tickets.filter(x => x.status === "resolved" || x.status === "closed").length;
-    const dueMaint    = P.tasks.filter(x => x.status === "overdue" || x.status === "due-soon").length;
-    const overdueM    = P.tasks.filter(x => x.status === "overdue").length;
-    const openInc     = P.incidents.filter(x => x.status !== "closed").length;
-    const onDuty      = P.staff.filter(x => x.status !== "on-leave").length;
-    const criticalT   = P.tickets.filter(x => x.priority === "critical" && x.status !== "resolved" && x.status !== "closed");
-    const highT       = P.tickets.filter(x => x.priority === "high" && x.status !== "resolved" && x.status !== "closed");
-    const totalCost   = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const tatList     = P.tickets.filter(t => t.tatMins);
-    const avgTAT      = tatList.length ? Math.round(tatList.reduce((a, t) => a + t.tatMins, 0) / tatList.length) : 0;
-    const lowStock    = P.inventory.filter(i => i.qty < i.min);
+    let openT = 0, inProgress = 0, resolved = 0;
+    let criticalT = [], highT = [];
+    let totalCost = 0, tatSum = 0, tatCount = 0;
+    let whatsapp = 0;
+
+    for (let i = 0; i < P.tickets.length; i++) {
+      const t = P.tickets[i];
+      if (t.status === "open") openT++;
+      else if (t.status === "in-progress") inProgress++;
+      else if (t.status === "resolved" || t.status === "closed") resolved++;
+
+      if (t.priority === "critical" && t.status !== "resolved" && t.status !== "closed") criticalT.push(t);
+      else if (t.priority === "high" && t.status !== "resolved" && t.status !== "closed") highT.push(t);
+
+      if (t.cost) totalCost += t.cost;
+      if (t.tatMins) {
+        tatSum += t.tatMins;
+        tatCount++;
+      }
+      if (t.source === "whatsapp") whatsapp++;
+    }
+
+    let dueMaint = 0, overdueM = 0;
+    for (let i = 0; i < P.tasks.length; i++) {
+      const t = P.tasks[i];
+      if (t.status === "overdue") {
+        overdueM++;
+        dueMaint++;
+      } else if (t.status === "due-soon") {
+        dueMaint++;
+      }
+    }
+
+    const avgTAT = tatCount > 0 ? Math.round(tatSum / tatCount) : 0;
+    const openInc = P.incidents.filter(x => x.status !== "closed").length;
+    const onDuty = P.staff.filter(x => x.status !== "on-leave").length;
+    const lowStock = P.inventory.filter(i => i.qty < i.min);
     const expiringAMC = P.vendors.filter(v => v.status === "expiring");
-    const overdueA    = P.assets.filter(a => a.status === "overdue");
-    const whatsapp    = P.tickets.filter(t => t.source === "whatsapp").length;
-    const priority    = [...criticalT, ...highT.slice(0, 4)].slice(0, 5);
+    const overdueA = P.assets.filter(a => a.status === "overdue");
+    const priority = [...criticalT, ...highT.slice(0, 4)].slice(0, 5);
+
     return { openT, inProgress, resolved, dueMaint, overdueM, openInc, onDuty, totalCost, avgTAT, lowStock, expiringAMC, overdueA, whatsapp, priority, criticalCount: criticalT.length };
   }, [P.tickets, P.tasks, P.incidents, P.staff, P.inventory, P.vendors, P.assets]);
 
@@ -194,13 +220,20 @@ export default function Dash({ P }) {
     weekday: "long", day: "numeric", month: "long",
   });
 
-  const distribution = useMemo(() => (
-    ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
-      const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
-      return { p, cnt, pct };
-    })
-  ), [P.tickets]);
+  const distribution = useMemo(() => {
+    // ⚡ Bolt Optimization: Single pass instead of 4 filter passes
+    let counts = { critical: 0, high: 0, medium: 0, low: 0 };
+    for (let i = 0; i < P.tickets.length; i++) {
+        const p = P.tickets[i].priority;
+        if (counts[p] !== undefined) counts[p]++;
+    }
+    const total = P.tickets.length;
+    return ["critical", "high", "medium", "low"].map(p => ({
+      p,
+      cnt: counts[p],
+      pct: total ? Math.round((counts[p] / total) * 100) : 0
+    }));
+  }, [P.tickets]);
 
   return (
     <motion.div
