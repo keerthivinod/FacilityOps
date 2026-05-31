@@ -95,13 +95,22 @@ function calculatePersonnel(text, staff = []) {
 }
 
 function buildContext(P) {
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const resolvedTickets = P.tickets.filter(t => t.status === "resolved" || t.status === "closed");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    let openTickets = [], resolvedTickets = [], criticalTickets = [];
+    let totalCost = 0, tatSum = 0, tatCount = 0;
+    for (let i = 0; i < P.tickets.length; i++) {
+        const t = P.tickets[i];
+        if (t.status === "open" || t.status === "in-progress") openTickets.push(t);
+        else if (t.status === "resolved" || t.status === "closed") resolvedTickets.push(t);
+        if (t.priority === "critical") criticalTickets.push(t);
+        totalCost += (t.cost || 0);
+        if (t.tatMins) {
+            tatSum += t.tatMins;
+            tatCount++;
+        }
+    }
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
+    const avgTAT = tatCount > 0 ? tatSum / tatCount : 0;
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
@@ -144,13 +153,28 @@ Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measur
 
 function generateLocalResponse(query, P) {
     const q = query.toLowerCase();
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+
+    let openTickets = [], criticalTickets = [];
+    let totalCost = 0;
+    for (let i = 0; i < P.tickets.length; i++) {
+        const t = P.tickets[i];
+        if (t.status === "open" || t.status === "in-progress") openTickets.push(t);
+        if (t.priority === "critical") criticalTickets.push(t);
+        totalCost += (t.cost || 0);
+    }
+
+    let lowStock = [];
+    for (let i = 0; i < P.inventory.length; i++) {
+        if (P.inventory[i].qty < P.inventory[i].min) lowStock.push(P.inventory[i]);
+    }
+
+    let expiringAMC = [];
+    for (let i = 0; i < P.vendors.length; i++) {
+        if (P.vendors[i].status === "expiring") expiringAMC.push(P.vendors[i]);
+    }
+
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const lowStock = P.inventory.filter(i => i.qty < i.min);
-    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
 
     if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
         return { sections: [
