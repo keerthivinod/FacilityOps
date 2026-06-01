@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -89,7 +89,11 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
         showToast(`→ ${status}`);
     };
 
-    const flt = filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+    // ⚡ Bolt Optimization: Memoized filter array
+    // Prevents re-computing filter on every render, avoiding O(n) array operations when unrelated state changes.
+    const flt = useMemo(() => {
+        return filter === "all" ? tickets : tickets.filter((t) => t.status === filter);
+    }, [tickets, filter]);
     const t = detail ? tickets.find((x) => x.id === detail) : null;
 
     if (detail && t)
@@ -149,6 +153,17 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
             </div>
         );
 
+    // ⚡ Bolt Optimization: Memoize status counts to prevent multiple O(n) passes on every render
+    const counts = useMemo(() => {
+        return tickets.reduce(
+            (acc, t) => {
+                acc[t.status] = (acc[t.status] || 0) + 1;
+                return acc;
+            },
+            { open: 0, "in-progress": 0, resolved: 0 }
+        );
+    }, [tickets]);
+
     return (
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -159,7 +174,7 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
             </div>
 
             <div style={{ display: "flex", gap: 6, marginBottom: 12, overflowX: "auto" }}>
-                {[["all", "All", tickets.length], ["open", "Open", tickets.filter((t) => t.status === "open").length], ["in-progress", "Active", tickets.filter((t) => t.status === "in-progress").length], ["resolved", "Done", tickets.filter((t) => t.status === "resolved").length]].map(([v, l, c]) => (
+                {[["all", "All", tickets.length], ["open", "Open", counts["open"] || 0], ["in-progress", "Active", counts["in-progress"] || 0], ["resolved", "Done", counts["resolved"] || 0]].map(([v, l, c]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#4f46e5" : "#e5e7eb"}`, background: filter === v ? "#4f46e5" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                         {l}({c})
                     </button>
