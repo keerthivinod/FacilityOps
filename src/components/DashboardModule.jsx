@@ -170,24 +170,63 @@ function AlertPill({ count, label, onClick, icon: Icon, tone }) {
 
 export default function Dash({ P }) {
   const m = useMemo(() => {
-    const openT       = P.tickets.filter(x => x.status === "open").length;
-    const inProgress  = P.tickets.filter(x => x.status === "in-progress").length;
-    const resolved    = P.tickets.filter(x => x.status === "resolved" || x.status === "closed").length;
-    const dueMaint    = P.tasks.filter(x => x.status === "overdue" || x.status === "due-soon").length;
-    const overdueM    = P.tasks.filter(x => x.status === "overdue").length;
-    const openInc     = P.incidents.filter(x => x.status !== "closed").length;
-    const onDuty      = P.staff.filter(x => x.status !== "on-leave").length;
-    const criticalT   = P.tickets.filter(x => x.priority === "critical" && x.status !== "resolved" && x.status !== "closed");
-    const highT       = P.tickets.filter(x => x.priority === "high" && x.status !== "resolved" && x.status !== "closed");
-    const totalCost   = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const tatList     = P.tickets.filter(t => t.tatMins);
-    const avgTAT      = tatList.length ? Math.round(tatList.reduce((a, t) => a + t.tatMins, 0) / tatList.length) : 0;
-    const lowStock    = P.inventory.filter(i => i.qty < i.min);
+    const counts = P.tickets.reduce((acc, t) => {
+        if (t.status === "open") acc.openT++;
+        else if (t.status === "in-progress") acc.inProgress++;
+        else if (t.status === "resolved" || t.status === "closed") acc.resolved++;
+
+        if (t.status !== "resolved" && t.status !== "closed") {
+            if (t.priority === "critical") acc.criticalT.push(t);
+            else if (t.priority === "high") acc.highT.push(t);
+        }
+
+        if (t.cost) acc.totalCost += t.cost;
+        if (t.tatMins) {
+            acc.tatSum += t.tatMins;
+            acc.tatCount++;
+        }
+        if (t.source === "whatsapp") acc.whatsapp++;
+
+        return acc;
+    }, { openT: 0, inProgress: 0, resolved: 0, criticalT: [], highT: [], totalCost: 0, tatSum: 0, tatCount: 0, whatsapp: 0 });
+
+    const taskCounts = P.tasks.reduce((acc, t) => {
+        if (t.status === "overdue") {
+            acc.overdueM++;
+            acc.dueMaint++;
+        } else if (t.status === "due-soon") {
+            acc.dueMaint++;
+        }
+        return acc;
+    }, { overdueM: 0, dueMaint: 0 });
+
+    const openInc = P.incidents.reduce((acc, i) => i.status !== "closed" ? acc + 1 : acc, 0);
+    const onDuty = P.staff.reduce((acc, s) => s.status !== "on-leave" ? acc + 1 : acc, 0);
+
+    const lowStock = P.inventory.filter(i => i.qty < i.min);
     const expiringAMC = P.vendors.filter(v => v.status === "expiring");
-    const overdueA    = P.assets.filter(a => a.status === "overdue");
-    const whatsapp    = P.tickets.filter(t => t.source === "whatsapp").length;
-    const priority    = [...criticalT, ...highT.slice(0, 4)].slice(0, 5);
-    return { openT, inProgress, resolved, dueMaint, overdueM, openInc, onDuty, totalCost, avgTAT, lowStock, expiringAMC, overdueA, whatsapp, priority, criticalCount: criticalT.length };
+    const overdueA = P.assets.filter(a => a.status === "overdue");
+
+    const priority = [...counts.criticalT, ...counts.highT.slice(0, 4)].slice(0, 5);
+    const avgTAT = counts.tatCount ? Math.round(counts.tatSum / counts.tatCount) : 0;
+
+    return {
+        openT: counts.openT,
+        inProgress: counts.inProgress,
+        resolved: counts.resolved,
+        dueMaint: taskCounts.dueMaint,
+        overdueM: taskCounts.overdueM,
+        openInc,
+        onDuty,
+        totalCost: counts.totalCost,
+        avgTAT,
+        lowStock,
+        expiringAMC,
+        overdueA,
+        whatsapp: counts.whatsapp,
+        priority,
+        criticalCount: counts.criticalT.length
+    };
   }, [P.tickets, P.tasks, P.incidents, P.staff, P.inventory, P.vendors, P.assets]);
 
   const today = new Date().toLocaleDateString("en-IN", {
