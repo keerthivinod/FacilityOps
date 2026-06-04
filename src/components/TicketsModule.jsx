@@ -96,6 +96,17 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
     }, [tickets, filter]);
     const t = detail ? tickets.find((x) => x.id === detail) : null;
 
+    // ⚡ Bolt Optimization: Memoize status counts to prevent multiple O(n) passes on every render
+    const counts = useMemo(() => {
+        return tickets.reduce(
+            (acc, t) => {
+                acc[t.status] = (acc[t.status] || 0) + 1;
+                return acc;
+            },
+            { open: 0, "in-progress": 0, resolved: 0 }
+        );
+    }, [tickets]);
+
     if (detail && t)
         return (
             <div>
@@ -153,16 +164,7 @@ export default function Tkt({ tickets, setTickets, showToast, staff }) {
             </div>
         );
 
-    // ⚡ Bolt Optimization: Memoize status counts to prevent multiple O(n) passes on every render
-    const counts = useMemo(() => {
-        return tickets.reduce(
-            (acc, t) => {
-                acc[t.status] = (acc[t.status] || 0) + 1;
-                return acc;
-            },
-            { open: 0, "in-progress": 0, resolved: 0 }
-        );
-    }, [tickets]);
+
 
     return (
         <div>

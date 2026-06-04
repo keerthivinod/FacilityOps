@@ -18,7 +18,7 @@ Additionally, FacilityOps integrates an **AI Brain** to help facility managers q
 
 - **Frontend:** Next.js 14 (App Router), React 18, Tailwind CSS
 - **Backend/API:** Netlify Functions (`/.netlify/functions/*`)
-- **Database:** Local SQLite database using `sql.js`
+- **Database:** Local SQLite database using `sql.js` (Multi-tenant SaaS capable)
 
 ## Getting Started
 
@@ -27,25 +27,33 @@ Additionally, FacilityOps integrates an **AI Brain** to help facility managers q
 - [Node.js](https://nodejs.org/en/) (v18 or higher recommended)
 - `npm`
 
-### Installation
+### Installation & Local Setup
 
 1. **Clone the repository:**
-   \`\`\`bash
+   ```bash
    git clone <repository-url>
    cd facilityops
-   \`\`\`
+   ```
 
 2. **Install dependencies:**
-   \`\`\`bash
+   ```bash
    npm install
-   \`\`\`
+   ```
 
-3. **Initialize the Database (Important!):**
-   The application uses a local SQLite database file (`facilityops.db`). To create the schema and populate it with the default login accounts, run the following scripts:
-   \`\`\`bash
+3. **Configure Environment Variables:**
+   Create a `.env.local` file in the root directory and set the `JWT_SECRET`:
+   ```bash
+   echo "JWT_SECRET=supersecret" > .env.local
+   ```
+   *(Note: Replace `supersecret` with a secure random string in production)*
+
+4. **Initialize the Database (Important!):**
+   The application uses a local SQLite database file (`facilityops.db`). To create the multi-tenant SaaS schema and populate it with the default login accounts, run the following scripts in order:
+   ```bash
+   cat db/schema.sql | sqlite3 facilityops.db
    npm run db:migrate-saas
    npm run db:seed
-   \`\`\`
+   ```
 
    **Default Accounts:**
    - Facility Manager: `keerthi` / `facility123`
@@ -53,11 +61,11 @@ Additionally, FacilityOps integrates an **AI Brain** to help facility managers q
    - Management: `management` / `admin123`
    - Platform Admin: `admin` / `admin` (must change password on first login)
 
-4. **Run the Development Server:**
+5. **Run the Development Server:**
    FacilityOps relies on Netlify Functions for its backend API. You must use the Netlify CLI to run both the Next.js frontend and the functions simultaneously:
-   \`\`\`bash
+   ```bash
    npx netlify dev
-   \`\`\`
+   ```
    Open the Local server URL (typically `http://localhost:8888`) in your browser to view the application.
 
 ## AI Brain Configuration
@@ -78,12 +86,13 @@ The key is securely stored in the server's tenant settings database and will be 
 FacilityOps is optimized to be deployed on [Netlify](https://www.netlify.com/).
 
 1. Connect your GitHub repository to Netlify.
-2. Netlify will automatically detect the Next.js framework and configure the build settings.
-3. Ensure the Build Command is set to `npm run build` and the Publish Directory is set to `.next`.
-4. Deploy the site!
+2. Ensure you have set the `JWT_SECRET` environment variable in your Netlify site settings.
+3. Netlify will automatically detect the Next.js framework and configure the build settings.
+4. Ensure the Build Command is set to `npm run build` and the Publish Directory is set to `out` (or `.next` depending on export configuration).
+5. Deploy the site!
 
-*(Note: In a production environment, you may want to migrate from the local SQLite file to a managed PostgreSQL database by updating the database connection logic in `netlify/functions/lib/db.js`.)*
+*(Note: The default database is a local file `facilityops.db`. In a true serverless production environment, you should migrate the database connection logic in `netlify/functions/lib/db.js` to use an external managed PostgreSQL provider since serverless functions are ephemeral.)*
 
 ## Support
 
-If you encounter any issues, please refer to the documentation or contact support. Default password support is provided as `facility123`.
+If you encounter any issues, please refer to the documentation or contact support.

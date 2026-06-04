@@ -46,7 +46,7 @@ async function run(sql, params = []) {
 
 async function seed() {
   await initDb();
-  const defaultTenantId = "T001";
+  const defaultTenantId = "tn_demo_vaidyagrama";
   try {
 
     // ─── USERS ───────────────────────────────────────────────────────────────
