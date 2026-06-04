@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -6,6 +6,9 @@ import { api } from "@/lib/api";
 export default function Ven({ vendors, setVendors, showToast }) {
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState(null);
+
+    // Performance Optimization: Calculate expiring vendors once per update instead of multiple times on render using useMemo
+    const expiringCount = useMemo(() => vendors.reduce((acc, v) => v.status === "expiring" ? acc + 1 : acc, 0), [vendors]);
 
     const handleEdit = (vendor) => {
         setForm({ ...vendor });
@@ -56,9 +59,9 @@ export default function Ven({ vendors, setVendors, showToast }) {
                     + Add
                 </button>
             </div>
-            {vendors.filter((v) => v.status === "expiring").length > 0 && (
+            {expiringCount > 0 && (
                 <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12, padding: "10px 14px", marginBottom: 12, fontSize: 12, fontWeight: 700, color: "#d97706" }}>
-                    ⏰ {vendors.filter((v) => v.status === "expiring").length} AMC expiring
+                    ⏰ {expiringCount} AMC expiring
                 </div>
             )}
             {vendors.map((v) => (

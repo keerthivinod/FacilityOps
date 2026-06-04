@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -6,6 +6,16 @@ export default function Tm({ staff, setStaff, showToast }) {
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState(null);
 
+    // Performance Optimization: Replaced multiple staff.filter().length calls on every render with a single useMemo reduce block to improve performance.
+    const stats = useMemo(() => {
+        return staff.reduce((acc, s) => {
+            if (s.status === "available") acc.available++;
+            else if (s.status === "busy") acc.busy++;
+            else if (s.status === "on-leave") acc.leave++;
+            return acc;
+        }, { available: 0, busy: 0, leave: 0 });
+    }, [staff]);
+
     const TAT_BENCHMARKS = { plumber: 30, carpenter: 45, electrician: 25, it: 20, helper: 15 };
 
     const handleEdit = (member) => {
@@ -55,7 +65,7 @@ export default function Tm({ staff, setStaff, showToast }) {
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 14 }}>
-                {[["Available", staff.filter((s) => s.status === "available").length, "#16a34a"], ["Busy", staff.filter((s) => s.status === "busy").length, "#d97706"], ["Leave", staff.filter((s) => s.status === "on-leave").length, "#6b7280"]].map(([l, v, c]) => (
+                {[["Available", stats.available, "#16a34a"], ["Busy", stats.busy, "#d97706"], ["Leave", stats.leave, "#6b7280"]].map(([l, v, c]) => (
                     <div key={l} style={cd({ textAlign: "center" })}>
                         <div style={{ fontSize: 22, fontWeight: 800, color: c }}>{v}</div>
                         <div style={{ fontSize: 10, color: "#94a3b8" }}>{l}</div>
