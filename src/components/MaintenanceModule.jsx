@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, statusColor, SB, PD } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -19,11 +19,21 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
         { k: "completed", l: "Done" },
     ];
 
-    const flt = tasks.filter((t) => {
-        if (tab !== "all" && t.status !== tab) return false;
-        if (search && !t.asset.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-    });
+    const taskCounts = useMemo(() => {
+        return tasks.reduce((acc, t) => {
+            acc[t.status] = (acc[t.status] || 0) + 1;
+            return acc;
+        }, {});
+    }, [tasks]);
+
+    const flt = useMemo(() => {
+        const query = search ? search.toLowerCase() : "";
+        return tasks.filter((t) => {
+            if (tab !== "all" && t.status !== tab) return false;
+            if (query && !t.asset.toLowerCase().includes(query)) return false;
+            return true;
+        });
+    }, [tasks, tab, search]);
 
     const done = (id) => {
         setTasks((p) => p.map((t) => (t.id === id ? { ...t, status: "completed", completedAt: new Date().toISOString().split("T")[0], remark } : t)));
@@ -86,9 +96,10 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
             </div>
 
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search tasks/assets..." style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 12, padding: "10px 14px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
+            {/* Performance Optimization: Calculate task counts once via useMemo to avoid multiple O(N) Array.filter traversals on every render */}
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
                 {tabs.map((t) => {
-                    const c = t.k === "all" ? tasks.length : tasks.filter((x) => x.status === t.k).length;
+                    const c = t.k === "all" ? tasks.length : taskCounts[t.k] || 0;
                     return (
                         <button key={t.k} onClick={() => setTab(t.k)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${tab === t.k ? "#4f46e5" : "#e5e7eb"}`, background: tab === t.k ? "#4f46e5" : "#fff", color: tab === t.k ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {t.l} ({c})
