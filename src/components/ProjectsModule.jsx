@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -40,7 +40,11 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
         showToast("Project deleted");
     };
 
-    const flt = filter === "all" ? projects : projects.filter(p => p.status === filter);
+    // ⚡ Bolt Optimization: Memoized filter array
+    // Prevents re-computing filter on every render
+    const flt = useMemo(() => {
+        return filter === "all" ? projects : projects.filter(p => p.status === filter);
+    }, [projects, filter]);
 
     return (
         <div>
