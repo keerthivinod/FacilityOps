@@ -15,10 +15,15 @@ export default function Rpt({ P }) {
 
   // Memoize priority distributions
   const priorityDist = useMemo(() => {
+    // Performance Optimization: Replaced O(N) filter.length inside map with a single O(N) reduce
+    const priorityCounts = P.tickets.reduce((acc, t) => {
+        acc[t.priority] = (acc[t.priority] || 0) + 1;
+        return acc;
+    }, {});
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = priorityCounts[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
