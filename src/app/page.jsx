@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   autoRoute, LoginScreen, PAGES, BNAV, cd, Spinner,
 } from "@/lib/data";
@@ -167,6 +167,8 @@ function Layout({ user, setUser }) {
     createTicket, updateTicket,
   };
 
+  const unreadNotifsCount = useMemo(() => notifs.reduce((acc, n) => acc + (n.read ? 0 : 1), 0), [notifs]);
+
   const R = {
     dashboard:    <Dash P={P} />,
     assets:       <Ast {...P} />,
@@ -248,10 +250,10 @@ function Layout({ user, setUser }) {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button className="fo-header-btn" onClick={() => goTo("notifications")}
-            aria-label={`Notifications${notifs.filter(n => !n.read).length > 0 ? `, ${notifs.filter(n => !n.read).length} unread` : ""}`}>
+            aria-label={`Notifications${unreadNotifsCount > 0 ? `, ${unreadNotifsCount} unread` : ""}`}>
             {"\u{1F514}"}
-            {notifs.filter(n => !n.read).length > 0 && (
-              <span className="fo-notif-dot" aria-hidden="true">{notifs.filter(n => !n.read).length}</span>
+            {unreadNotifsCount > 0 && (
+              <span className="fo-notif-dot" aria-hidden="true">{unreadNotifsCount}</span>
             )}
           </button>
           <button className="fo-header-btn fo-header-menu-btn" aria-label="Open module menu" aria-haspopup="dialog"
