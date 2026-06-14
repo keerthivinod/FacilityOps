@@ -7,3 +7,6 @@
 ## 2024-05-19 - Avoid repeated Array.filter().length inside JSX
 **Learning:** Found multiple instances where `.filter().length` was called directly inside render maps (e.g., in StaffModule, EscalationModule, VendorsModule). This causes multiple O(N) array traversals on every single render.
 **Action:** Replace direct `.filter().length` calls inside JSX loops with a single `useMemo` block using `.reduce()` to calculate all necessary counts in a single O(N) pass, and add clear explanatory comments for these optimizations.
+## 2025-02-18 - Combine multiple O(N) array traversals
+**Learning:** In AIBrainModule, we identified an opportunity to replace multiple independent `.filter()` operations on the same large array (`P.tickets`) with a single `.reduce()` pass. This avoids redundant iterations and improves performance.
+**Action:** When filtering the same array multiple times, use a single `.reduce()` pass with a mutable accumulator object to extract multiple subsets simultaneously.
