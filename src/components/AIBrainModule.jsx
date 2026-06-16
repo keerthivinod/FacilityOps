@@ -95,13 +95,27 @@ function calculatePersonnel(text, staff = []) {
 }
 
 function buildContext(P) {
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const resolvedTickets = P.tickets.filter(t => t.status === "resolved" || t.status === "closed");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    // Performance Optimization: Combine multiple O(N) array traversals of P.tickets, P.assets, and P.tasks into single passes
+    const ticketStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open.push(t);
+        if (t.status === "resolved" || t.status === "closed") acc.resolved.push(t);
+        if (t.priority === "critical") acc.critical.push(t);
+        if (t.cost) acc.totalCost += t.cost;
+        if (t.tatMins) {
+            acc.tatSum += t.tatMins;
+            acc.tatCount++;
+        }
+        return acc;
+    }, { open: [], resolved: [], critical: [], totalCost: 0, tatSum: 0, tatCount: 0 });
+
+    const openTickets = ticketStats.open;
+    const resolvedTickets = ticketStats.resolved;
+    const criticalTickets = ticketStats.critical;
+    const totalCost = ticketStats.totalCost;
+    const avgTAT = ticketStats.tatCount ? ticketStats.tatSum / ticketStats.tatCount : 0;
+
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
