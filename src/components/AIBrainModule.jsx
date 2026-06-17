@@ -95,13 +95,28 @@ function calculatePersonnel(text, staff = []) {
 }
 
 function buildContext(P) {
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const resolvedTickets = P.tickets.filter(t => t.status === "resolved" || t.status === "closed");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
-    const overdueAssets = P.assets.filter(a => a.status === "overdue");
-    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
+    const ticketStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open.push(t);
+        else if (t.status === "resolved" || t.status === "closed") acc.resolved.push(t);
+
+        if (t.priority === "critical") acc.critical.push(t);
+        if (t.cost) acc.totalCost += t.cost;
+
+        if (t.tatMins) {
+            acc.tatSum += t.tatMins;
+            acc.tatCount++;
+        }
+        return acc;
+    }, { open: [], resolved: [], critical: [], totalCost: 0, tatSum: 0, tatCount: 0 });
+
+    const openTickets = ticketStats.open;
+    const resolvedTickets = ticketStats.resolved;
+    const criticalTickets = ticketStats.critical;
+    const totalCost = ticketStats.totalCost;
+    const avgTAT = ticketStats.tatCount ? ticketStats.tatSum / ticketStats.tatCount : 0;
+
+    const overdueAssets = P.assets.reduce((acc, a) => { if (a.status === "overdue") acc.push(a); return acc; }, []);
+    const overdueTasks = P.tasks.reduce((acc, t) => { if (t.status === "overdue") acc.push(t); return acc; }, []);
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
@@ -144,13 +159,22 @@ Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measur
 
 function generateLocalResponse(query, P) {
     const q = query.toLowerCase();
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
-    const overdueAssets = P.assets.filter(a => a.status === "overdue");
-    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const lowStock = P.inventory.filter(i => i.qty < i.min);
-    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
+
+    const ticketStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open.push(t);
+        if (t.priority === "critical") acc.critical.push(t);
+        if (t.cost) acc.totalCost += t.cost;
+        return acc;
+    }, { open: [], critical: [], totalCost: 0 });
+
+    const openTickets = ticketStats.open;
+    const criticalTickets = ticketStats.critical;
+    const totalCost = ticketStats.totalCost;
+
+    const overdueAssets = P.assets.reduce((acc, a) => { if (a.status === "overdue") acc.push(a); return acc; }, []);
+    const overdueTasks = P.tasks.reduce((acc, t) => { if (t.status === "overdue") acc.push(t); return acc; }, []);
+    const lowStock = P.inventory.reduce((acc, i) => { if (i.qty < i.min) acc.push(i); return acc; }, []);
+    const expiringAMC = P.vendors.reduce((acc, v) => { if (v.status === "expiring") acc.push(v); return acc; }, []);
 
     if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
         return { sections: [
