@@ -187,8 +187,10 @@ export default function Dash({ P }) {
         }
         if (t.source === "whatsapp") acc.whatsapp++;
 
+        acc.priorityCounts[t.priority] = (acc.priorityCounts[t.priority] || 0) + 1;
+
         return acc;
-    }, { openT: 0, inProgress: 0, resolved: 0, criticalT: [], highT: [], totalCost: 0, tatSum: 0, tatCount: 0, whatsapp: 0 });
+    }, { openT: 0, inProgress: 0, resolved: 0, criticalT: [], highT: [], totalCost: 0, tatSum: 0, tatCount: 0, whatsapp: 0, priorityCounts: { critical: 0, high: 0, medium: 0, low: 0 } });
 
     const taskCounts = P.tasks.reduce((acc, t) => {
         if (t.status === "overdue") {
@@ -225,7 +227,8 @@ export default function Dash({ P }) {
         overdueA,
         whatsapp: counts.whatsapp,
         priority,
-        criticalCount: counts.criticalT.length
+        criticalCount: counts.criticalT.length,
+        priorityCounts: counts.priorityCounts
     };
   }, [P.tickets, P.tasks, P.incidents, P.staff, P.inventory, P.vendors, P.assets]);
 
@@ -235,11 +238,11 @@ export default function Dash({ P }) {
 
   const distribution = useMemo(() => (
     ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = m.priorityCounts[p] || 0;
       const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
       return { p, cnt, pct };
     })
-  ), [P.tickets]);
+  ), [m.priorityCounts, P.tickets.length]);
 
   return (
     <motion.div
