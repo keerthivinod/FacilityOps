@@ -101,7 +101,11 @@ function buildContext(P) {
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
     const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
+    const tatStats = P.tickets.reduce((acc, t) => {
+      if (t.tatMins) { acc.sum += t.tatMins; acc.count++; }
+      return acc;
+    }, { sum: 0, count: 0 });
+    const avgTAT = tatStats.count ? tatStats.sum / tatStats.count : 0;
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
