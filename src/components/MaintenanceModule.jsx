@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, statusColor, SB, PD } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -19,11 +19,16 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
         { k: "completed", l: "Done" },
     ];
 
-    const flt = tasks.filter((t) => {
-        if (tab !== "all" && t.status !== tab) return false;
-        if (search && !t.asset.toLowerCase().includes(search.toLowerCase())) return false;
-        return true;
-    });
+    // ⚡ Bolt Optimization: Memoize filtered tasks to prevent re-filtering on every render
+    // and extract search.toLowerCase() to run once instead of inside the O(N) loop
+    const flt = useMemo(() => {
+        const query = search ? search.toLowerCase() : "";
+        return tasks.filter((t) => {
+            if (tab !== "all" && t.status !== tab) return false;
+            if (query && !t.asset.toLowerCase().includes(query)) return false;
+            return true;
+        });
+    }, [tasks, tab, search]);
 
     const done = (id) => {
         setTasks((p) => p.map((t) => (t.id === id ? { ...t, status: "completed", completedAt: new Date().toISOString().split("T")[0], remark } : t)));
@@ -76,6 +81,19 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
 
     const taskForComp = comp ? tasks.find((t) => t.id === comp) : null;
 
+    // ⚡ Bolt Optimization: Compute tab counts once per tasks update, instead of inside map on every render
+    const tabCounts = useMemo(() => {
+        return tasks.reduce((acc, t) => {
+            acc.all++;
+            if (acc[t.status] !== undefined) {
+                acc[t.status]++;
+            } else {
+                acc[t.status] = 1;
+            }
+            return acc;
+        }, { all: 0, "overdue": 0, "due-soon": 0, "upcoming": 0, "completed": 0 });
+    }, [tasks]);
+
     return (
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -87,14 +105,11 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
 
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search tasks/assets..." style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 12, padding: "10px 14px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
-                {tabs.map((t) => {
-                    const c = t.k === "all" ? tasks.length : tasks.filter((x) => x.status === t.k).length;
-                    return (
-                        <button key={t.k} onClick={() => setTab(t.k)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${tab === t.k ? "#4f46e5" : "#e5e7eb"}`, background: tab === t.k ? "#4f46e5" : "#fff", color: tab === t.k ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                            {t.l} ({c})
-                        </button>
-                    );
-                })}
+                {tabs.map((t) => (
+                    <button key={t.k} onClick={() => setTab(t.k)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${tab === t.k ? "#4f46e5" : "#e5e7eb"}`, background: tab === t.k ? "#4f46e5" : "#fff", color: tab === t.k ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                        {t.l} ({tabCounts[t.k] || 0})
+                    </button>
+                ))}
             </div>
 
             {flt.map((t) => (
