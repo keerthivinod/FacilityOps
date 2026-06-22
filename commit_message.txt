@@ -1,0 +1,16 @@
+⚡ Bolt: Replace repeated array filter length operations with memoized reduce passes
+
+💡 What:
+Replaced multiple repeated `O(N)` `Array.prototype.filter().length` calculations inside rendering loops (`useMemo` blocks and JSX output) with single-pass `.reduce()` or `for` loops inside `useMemo` hooks.
+Updated components: `DashboardModule.jsx`, `ProjectsModule.jsx`, `ReportsModule.jsx`, `MaintenanceModule.jsx`, `AIBrainModule.jsx`, and `app/page.jsx`.
+In `AIBrainModule.jsx`, deferred heavy calculations by evaluating them lazily or compiling them in a single iteration instead of looping over the whole list multiple times.
+
+🎯 Why:
+Inside components with dynamic lists, repetitive array traversals during `useMemo` computation or JSX mapping multiply iterations unnecessarily (e.g. `O(N * M)`), leading to performance degradation, particularly on large arrays.
+
+📊 Impact:
+Reduces repeated array traversals to single linear `O(N)` passes.
+Significant reduction in processing time for rendering large datasets during updates or mount events.
+
+🔬 Measurement:
+Run `pnpm run test` and `pnpm lint` and measure frame rendering performance on pages with large datasets.
