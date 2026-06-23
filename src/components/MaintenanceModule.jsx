@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, statusColor, SB, PD } from "@/lib/data";
 import { Modal } from "./Modal";
 import { api } from "@/lib/api";
@@ -18,6 +18,14 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
         { k: "upcoming", l: "Upcoming" },
         { k: "completed", l: "Done" },
     ];
+
+    // Performance Optimization: Replaced multiple tasks.filter().length calls on every render with a single useMemo reduce block
+    const statusCounts = useMemo(() => {
+        return tasks.reduce((acc, t) => {
+            acc[t.status] = (acc[t.status] || 0) + 1;
+            return acc;
+        }, {});
+    }, [tasks]);
 
     const flt = tasks.filter((t) => {
         if (tab !== "all" && t.status !== tab) return false;
@@ -88,7 +96,7 @@ export default function Mnt({ tasks, setTasks, showToast, staff, assets }) {
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="🔍 Search tasks/assets..." style={{ width: "100%", border: "1px solid #e5e7eb", borderRadius: 12, padding: "10px 14px", fontSize: 13, outline: "none", marginBottom: 10, boxSizing: "border-box" }} />
             <div style={{ display: "flex", gap: 6, overflowX: "auto", paddingBottom: 4, marginBottom: 12 }}>
                 {tabs.map((t) => {
-                    const c = t.k === "all" ? tasks.length : tasks.filter((x) => x.status === t.k).length;
+                    const c = t.k === "all" ? tasks.length : (statusCounts[t.k] || 0);
                     return (
                         <button key={t.k} onClick={() => setTab(t.k)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${tab === t.k ? "#4f46e5" : "#e5e7eb"}`, background: tab === t.k ? "#4f46e5" : "#fff", color: tab === t.k ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                             {t.l} ({c})
