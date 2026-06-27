@@ -95,13 +95,25 @@ function calculatePersonnel(text, staff = []) {
 }
 
 function buildContext(P) {
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const resolvedTickets = P.tickets.filter(t => t.status === "resolved" || t.status === "closed");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    const tStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open.push(t);
+        if (t.status === "resolved" || t.status === "closed") acc.resolved++;
+        if (t.priority === "critical") acc.critical.push(t);
+        if (t.cost) acc.totalCost += t.cost;
+        if (t.tatMins) { acc.tatSum += t.tatMins; acc.tatCount++; }
+        return acc;
+    }, { open: [], resolved: 0, critical: [], totalCost: 0, tatSum: 0, tatCount: 0 });
+
+    const openTickets = tStats.open;
+    // We accumulated resolved as a number instead of an array, but downstream code
+    // expects it to be an array with a .length property, so we mock it.
+    const resolvedTickets = { length: tStats.resolved };
+    const criticalTickets = tStats.critical;
+    const totalCost = tStats.totalCost;
+    const avgTAT = tStats.tatCount ? tStats.tatSum / tStats.tatCount : 0;
+
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
@@ -144,11 +156,19 @@ Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measur
 
 function generateLocalResponse(query, P) {
     const q = query.toLowerCase();
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    const tStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open.push(t);
+        if (t.priority === "critical") acc.critical.push(t);
+        if (t.cost) acc.totalCost += t.cost;
+        return acc;
+    }, { open: [], critical: [], totalCost: 0 });
+
+    const openTickets = tStats.open;
+    const criticalTickets = tStats.critical;
+    const totalCost = tStats.totalCost;
+
     const overdueAssets = P.assets.filter(a => a.status === "overdue");
     const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
     const lowStock = P.inventory.filter(i => i.qty < i.min);
     const expiringAMC = P.vendors.filter(v => v.status === "expiring");
 
