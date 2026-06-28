@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -21,8 +21,34 @@ export default function Doc({ docs, setDocs, showToast }) {
     const [form, setForm] = useState(null);
     const [filter, setFilter] = useState("all");
 
-    const expired = docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0));
-    const expiring = docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30);
+    // ⚡ Bolt: Performance Optimization
+    // Pre-calculate document states in a single O(N) pass to prevent redundant
+    // new Date() parsing in daysUntil() which was previously called up to 4x per doc per render.
+    const { docMeta, expired, expiring } = useMemo(() => {
+        const meta = new Map();
+        const exp = [];
+        const expg = [];
+
+        docs.forEach(d => {
+            const days = d.expiry ? daysUntil(d.expiry) : null;
+            const isExpired = d.expired || (days !== null && days < 0);
+            const isExpiring = !isExpired && days !== null && days >= 0 && days <= 30;
+
+            meta.set(d.id, { days, isExpired, isExpiring });
+
+            if (isExpired) exp.push(d);
+            if (isExpiring) expg.push(d);
+        });
+
+        return { docMeta: meta, expired: exp, expiring: expg };
+    }, [docs]);
+
+    const flt = useMemo(() => {
+        if (filter === "expired") return expired;
+        if (filter === "expiring") return expiring;
+        if (filter !== "all") return docs.filter(d => d.type === filter);
+        return docs;
+    }, [docs, filter, expired, expiring]);
 
     const handleAdd = () => {
         setForm({ name: "", type: "policy", expiry: "", size: "", expired: false });
@@ -56,11 +82,6 @@ export default function Doc({ docs, setDocs, showToast }) {
         showToast("Document deleted");
     };
 
-    const flt = filter === "all" ? docs
-        : filter === "expired" ? docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0))
-        : filter === "expiring" ? docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30)
-        : docs.filter(d => d.type === filter);
-
     return (
         <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -79,7 +100,7 @@ export default function Doc({ docs, setDocs, showToast }) {
             {expiring.length > 0 && (
                 <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 12, padding: "10px 14px", marginBottom: 10 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: "#d97706" }}>⚠️ {expiring.length} Expiring within 30 days</div>
-                    {expiring.map(d => <div key={d.id} style={{ fontSize: 11, color: "#92400e" }}> {d.name}  {daysUntil(d.expiry)}d left</div>)}
+                    {expiring.map(d => <div key={d.id} style={{ fontSize: 11, color: "#92400e" }}> {d.name}  {docMeta.get(d.id)?.days}d left</div>)}
                 </div>
             )}
 
@@ -92,9 +113,10 @@ export default function Doc({ docs, setDocs, showToast }) {
             </div>
 
             {flt.map(d => {
-                const days = daysUntil(d.expiry);
-                const isExpired = d.expired || (d.expiry && days < 0);
-                const isExpiring = !isExpired && d.expiry && days <= 30;
+                const meta = docMeta.get(d.id) || {};
+                const days = meta.days;
+                const isExpired = meta.isExpired;
+                const isExpiring = meta.isExpiring;
                 const [tc, tbg] = TYPE_COLORS[d.type] || ["#6b7280", "#f9fafb"];
                 return (
                     <div key={d.id} style={{ ...cd({ marginBottom: 8, position: "relative" }), borderLeft: `4px solid ${isExpired ? "#dc2626" : isExpiring ? "#d97706" : "#e5e7eb"}` }}>
