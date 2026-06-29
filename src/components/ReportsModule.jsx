@@ -3,26 +3,48 @@ import { useMemo } from "react";
 import { cd } from "@/lib/data";
 
 export default function Rpt({ P }) {
+  // Performance Optimization: Calculate ticket counts and totalTAT in a single pass to prevent multiple O(N) array traversals
+  const ticketStats = useMemo(() => {
+    return P.tickets.reduce((acc, t) => {
+      // Priority counts
+      acc.priorities[t.priority] = (acc.priorities[t.priority] || 0) + 1;
+
+      // Resolved count
+      if (t.status === "resolved" || t.status === "closed") {
+        acc.resolved++;
+      }
+
+      // TAT stats
+      if (t.tatMins) {
+        acc.tatTotal += t.tatMins;
+        acc.tatCount++;
+      }
+
+      return acc;
+    }, { priorities: {}, resolved: 0, tatTotal: 0, tatCount: 0 });
+  }, [P.tickets]);
+
   // Memoize top level ticket/task computations to avoid O(N) operations on every render
   const stats = useMemo(() => {
     const totalTickets = P.tickets.length;
-    const resolved = P.tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-    const tatList = P.tickets.filter(t => t.tatMins);
-    const avgTAT = tatList.reduce((a, t) => a + t.tatMins, 0) / (tatList.length || 1);
-    const overdueCount = P.tasks.filter(t => t.status === "overdue").length;
+    const resolved = ticketStats.resolved;
+
+    const avgTAT = ticketStats.tatTotal / (ticketStats.tatCount || 1);
+    // Performance Optimization: Use a single reduce pass for task counts
+    const overdueCount = P.tasks.reduce((count, t) => count + (t.status === "overdue" ? 1 : 0), 0);
     return { totalTickets, resolved, avgTAT, overdueCount };
-  }, [P.tickets, P.tasks]);
+  }, [P.tickets.length, P.tasks, ticketStats]);
 
   // Memoize priority distributions
   const priorityDist = useMemo(() => {
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = ticketStats.priorities[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
-  }, [P.tickets, stats.totalTickets]);
+  }, [ticketStats, stats.totalTickets]);
 
   // Memoize staff performance filtering
   const activeStaff = useMemo(() => P.staff.filter(s => s.tasksCompleted > 0), [P.staff]);

@@ -233,13 +233,21 @@ export default function Dash({ P }) {
     weekday: "long", day: "numeric", month: "long",
   });
 
+  // Performance Optimization: Pre-calculate priority counts to prevent O(N*4) operations in distribution
+  const priorityCounts = useMemo(() => {
+    return P.tickets.reduce((acc, t) => {
+      acc[t.priority] = (acc[t.priority] || 0) + 1;
+      return acc;
+    }, {});
+  }, [P.tickets]);
+
   const distribution = useMemo(() => (
     ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = priorityCounts[p] || 0;
       const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
       return { p, cnt, pct };
     })
-  ), [P.tickets]);
+  ), [P.tickets.length, priorityCounts]);
 
   return (
     <motion.div
