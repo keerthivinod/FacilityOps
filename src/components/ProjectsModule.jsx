@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -40,7 +40,17 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
         showToast("Project deleted");
     };
 
+
+    // Performance Optimization: Replaced multiple projects.filter().length calls on every render with a single useMemo reduce block
+    const counts = useMemo(() => {
+        return projects.reduce((acc, p) => {
+            acc[p.status] = (acc[p.status] || 0) + 1;
+            return acc;
+        }, { all: projects.length });
+    }, [projects]);
+
     const flt = filter === "all" ? projects : projects.filter(p => p.status === filter);
+
 
     return (
         <div>
@@ -54,7 +64,7 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12 }}>
                 {[["all", "All"], ["planned", "Planned"], ["in-progress", "Active"], ["completed", "Done"], ["on-hold", "On Hold"]].map(([v, l]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#7c3aed" : "#e5e7eb"}`, background: filter === v ? "#7c3aed" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        {l} ({v === "all" ? projects.length : projects.filter(p => p.status === v).length})
+                        {l} ({counts[v] || 0})
                     </button>
                 ))}
             </div>
