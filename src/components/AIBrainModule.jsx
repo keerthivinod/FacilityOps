@@ -95,13 +95,18 @@ function calculatePersonnel(text, staff = []) {
 }
 
 function buildContext(P) {
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const resolvedTickets = P.tickets.filter(t => t.status === "resolved" || t.status === "closed");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
-    const overdueAssets = P.assets.filter(a => a.status === "overdue");
-    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const avgTAT = P.tickets.filter(t => t.tatMins).reduce((a, t, _, arr) => a + t.tatMins / arr.length, 0);
+    const counts = P.tickets.reduce((acc, t) => {
+        if (t.status === "open" || t.status === "in-progress") acc.open++;
+        if (t.status === "resolved" || t.status === "closed") acc.resolved++;
+        if (t.priority === "critical") acc.critical++;
+        if (t.cost) acc.totalCost += t.cost;
+        if (t.tatMins) { acc.tatSum += t.tatMins; acc.tatCount++; }
+        return acc;
+    }, { open: 0, resolved: 0, critical: 0, totalCost: 0, tatSum: 0, tatCount: 0 });
+
+    const overdueAssets = P.assets.filter(a => a.status === "overdue").length;
+    const overdueTasks = P.tasks.filter(t => t.status === "overdue").length;
+    const avgTAT = counts.tatCount ? counts.tatSum / counts.tatCount : 0;
 
     return `You are FacilityOps AI Brain for Vaidyagrama Ayurveda Healing Village - a healthcare facility.
 
@@ -135,22 +140,17 @@ INVENTORY:
 ${P.inventory.map(i => `- ${i.name}: ${i.qty}/${i.min} ${i.unit} | Cost: Rs.${i.cost} | ${i.qty < i.min ? "LOW STOCK" : "OK"}`).join("\n")}
 
 SUMMARY:
-- Open Tickets: ${openTickets.length}, Critical: ${criticalTickets.length}, Resolved: ${resolvedTickets.length}
-- Overdue Assets: ${overdueAssets.length}, Overdue Tasks: ${overdueTasks.length}
-- Total Cost: Rs.${totalCost}, Average TAT: ${Math.round(avgTAT)} min
+- Open Tickets: ${counts.open}, Critical: ${counts.critical}, Resolved: ${counts.resolved}
+- Overdue Assets: ${overdueAssets}, Overdue Tasks: ${overdueTasks}
+- Total Cost: Rs.${counts.totalCost}, Average TAT: ${Math.round(avgTAT)} min
 
 Always provide: 1) Root cause analysis 2) Cost implications 3) Preventive measures 4) Accountability 5) Actionable recommendations`;
 }
 
 function generateLocalResponse(query, P) {
     const q = query.toLowerCase();
-    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
-    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
-    const overdueAssets = P.assets.filter(a => a.status === "overdue");
-    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
-    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
-    const lowStock = P.inventory.filter(i => i.qty < i.min);
-    const expiringAMC = P.vendors.filter(v => v.status === "expiring");
+
+    // Defer counts and filters until they are actually needed in the response branches
 
     if (q.includes("root cause") || q.includes("elevator") || q.includes("incident")) {
         return { sections: [
@@ -174,7 +174,14 @@ function generateLocalResponse(query, P) {
     }
     if (q.includes("cost") || q.includes("expense") || q.includes("budget")) {
         const byCategory = {};
-        P.tickets.filter(t => t.cost).forEach(t => { const c = t.category || "Other"; byCategory[c] = (byCategory[c] || 0) + t.cost; });
+        let totalCost = 0;
+        P.tickets.forEach(t => {
+            if (t.cost) {
+                const c = t.category || "Other";
+                byCategory[c] = (byCategory[c] || 0) + t.cost;
+                totalCost += t.cost;
+            }
+        });
         return { sections: [
             { icon: "\u{1F4B0}", title: "COST ANALYSIS", items: [`Total Repair Cost: Rs.${totalCost.toLocaleString()}`] },
             { title: "By Category", items: Object.entries(byCategory).map(([k, v]) => `${k}: Rs.${v.toLocaleString()}`) },
@@ -188,6 +195,11 @@ function generateLocalResponse(query, P) {
         ]};
     }
     if (q.includes("attention") || q.includes("priority") || q.includes("urgent") || q.includes("action")) {
+        const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+        const overdueAssets = P.assets.filter(a => a.status === "overdue");
+        const overdueTasks = P.tasks.filter(t => t.status === "overdue");
+        const lowStock = P.inventory.filter(i => i.qty < i.min);
+        const expiringAMC = P.vendors.filter(v => v.status === "expiring");
         return { sections: [
             { icon: "\u{1F6A8}", title: "IMMEDIATE ATTENTION REQUIRED" },
             { title: `Critical Tickets (${criticalTickets.length})`, items: criticalTickets.map(t => `${t.asset}: ${t.problem} [${t.status}]`), empty: "None" },
@@ -245,8 +257,15 @@ function generateLocalResponse(query, P) {
         ]};
     }
 
+    const openTickets = P.tickets.filter(t => t.status === "open" || t.status === "in-progress");
+    const criticalTickets = P.tickets.filter(t => t.priority === "critical");
+    const overdueAssets = P.assets.filter(a => a.status === "overdue");
+    const overdueTasks = P.tasks.filter(t => t.status === "overdue");
+    const totalCost = P.tickets.reduce((s, t) => s + (t.cost || 0), 0);
+    const lowStock = P.inventory.filter(i => i.qty < i.min);
+
     return { sections: [
-        { icon: "\u{1F9E0}", title: "FACILITYOPS ANALYSIS" },
+        { icon: "🧠", title: "FACILITYOPS ANALYSIS" },
         { title: "Current Status", items: [
             `${openTickets.length} open tickets requiring attention`,
             `${criticalTickets.length} critical issues`,
