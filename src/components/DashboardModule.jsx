@@ -233,13 +233,19 @@ export default function Dash({ P }) {
     weekday: "long", day: "numeric", month: "long",
   });
 
-  const distribution = useMemo(() => (
-    ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+  const distribution = useMemo(() => {
+    const counts = P.tickets.reduce((acc, t) => {
+        const p = t.priority;
+        if (p) acc[p] = (acc[p] || 0) + 1;
+        return acc;
+    }, {});
+
+    return ["critical", "high", "medium", "low"].map(p => {
+      const cnt = counts[p] || 0;
       const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
       return { p, cnt, pct };
-    })
-  ), [P.tickets]);
+    });
+  }, [P.tickets]);
 
   return (
     <motion.div
