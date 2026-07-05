@@ -6,19 +6,35 @@ export default function Rpt({ P }) {
   // Memoize top level ticket/task computations to avoid O(N) operations on every render
   const stats = useMemo(() => {
     const totalTickets = P.tickets.length;
-    const resolved = P.tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-    const tatList = P.tickets.filter(t => t.tatMins);
-    const avgTAT = tatList.reduce((a, t) => a + t.tatMins, 0) / (tatList.length || 1);
-    const overdueCount = P.tasks.filter(t => t.status === "overdue").length;
-    return { totalTickets, resolved, avgTAT, overdueCount };
+    // Performance Optimization: Replaced multiple filter/reduce passes with a single reduce pass
+    const tStats = P.tickets.reduce((acc, t) => {
+        if (t.status === "resolved" || t.status === "closed") {
+            acc.resolved++;
+        }
+        if (t.tatMins) {
+            acc.tatSum += t.tatMins;
+            acc.tatCount++;
+        }
+        return acc;
+    }, { resolved: 0, tatSum: 0, tatCount: 0 });
+    const avgTAT = tStats.tatCount > 0 ? tStats.tatSum / tStats.tatCount : 0;
+    const overdueCount = P.tasks.reduce((acc, t) => t.status === "overdue" ? acc + 1 : acc, 0);
+    return { totalTickets, resolved: tStats.resolved, avgTAT, overdueCount };
   }, [P.tickets, P.tasks]);
 
   // Memoize priority distributions
   const priorityDist = useMemo(() => {
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
+    // Performance Optimization: Replaced multiple filter().length calls inside map with a single reduce pass
+    const counts = P.tickets.reduce((acc, t) => {
+      if (t.priority) {
+        acc[t.priority] = (acc[t.priority] || 0) + 1;
+      }
+      return acc;
+    }, {});
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = counts[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
