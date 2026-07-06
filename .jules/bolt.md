@@ -7,3 +7,6 @@
 ## 2024-05-19 - Avoid repeated Array.filter().length inside JSX
 **Learning:** Found multiple instances where `.filter().length` was called directly inside render maps (e.g., in StaffModule, EscalationModule, VendorsModule). This causes multiple O(N) array traversals on every single render.
 **Action:** Replace direct `.filter().length` calls inside JSX loops with a single `useMemo` block using `.reduce()` to calculate all necessary counts in a single O(N) pass, and add clear explanatory comments for these optimizations.
+## 2024-05-20 - Array.filter() chained inside useMemo
+**Learning:** Found O(N * M) performance degradation inside `ReportsModule.jsx` where `.filter()` was chained inside `.map()` arrays on every render (even when wrapped in `useMemo`). This resulted in iterating through arrays of 50k+ elements unnecessarily.
+**Action:** Replace multiple `.filter().length` chained passes with a single `.reduce()` structure, accumulating independent counts and arrays inside one loop.
