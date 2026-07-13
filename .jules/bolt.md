@@ -11,3 +11,6 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+## 2024-05-19 - Avoid repeated Array.filter().length inside JSX
+**Learning:** Found instances where `.filter().length` or just `.filter()` was called repeatedly inside React render loops or functions like `buildContext` and `generateLocalResponse` causing O(N) traversals per check instead of doing it in one pass.
+**Action:** Replace multiple `.filter().length` with a single `.reduce()` pass to gather all required counts inside a `useMemo` block or directly before rendering.
