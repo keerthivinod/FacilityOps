@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -9,6 +9,17 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
     const [showAdd, setShowAdd] = useState(false);
     const [form, setForm] = useState(null);
     const [filter, setFilter] = useState("all");
+
+
+    const projectsCounts = useMemo(() => {
+        return projects.reduce((acc, p) => {
+            acc.all++;
+            if (p.status) {
+                acc[p.status] = (acc[p.status] || 0) + 1;
+            }
+            return acc;
+        }, { all: 0 });
+    }, [projects]);
 
     const handleAdd = () => {
         setForm({ name: "", lead: "", start: new Date().toISOString().split("T")[0], end: "", budget: 0, spent: 0, progress: 0, priority: "medium", status: "planned" });
@@ -54,7 +65,7 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12 }}>
                 {[["all", "All"], ["planned", "Planned"], ["in-progress", "Active"], ["completed", "Done"], ["on-hold", "On Hold"]].map(([v, l]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#7c3aed" : "#e5e7eb"}`, background: filter === v ? "#7c3aed" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        {l} ({v === "all" ? projects.length : projects.filter(p => p.status === v).length})
+                        {l} ({v === "all" ? projectsCounts.all : (projectsCounts[v] || 0)})
                     </button>
                 ))}
             </div>
