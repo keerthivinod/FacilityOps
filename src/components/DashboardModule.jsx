@@ -233,13 +233,19 @@ export default function Dash({ P }) {
     weekday: "long", day: "numeric", month: "long",
   });
 
-  const distribution = useMemo(() => (
-    ["critical", "high", "medium", "low"].map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+  // ⚡ Bolt Optimization: Calculate priority distribution in a single O(N) pass instead of 4 separate filter passes
+  const distribution = useMemo(() => {
+    const counts = P.tickets.reduce((acc, t) => {
+      if (acc[t.priority] !== undefined) acc[t.priority]++;
+      return acc;
+    }, { critical: 0, high: 0, medium: 0, low: 0 });
+
+    return ["critical", "high", "medium", "low"].map(p => {
+      const cnt = counts[p];
       const pct = P.tickets.length ? Math.round((cnt / P.tickets.length) * 100) : 0;
       return { p, cnt, pct };
-    })
-  ), [P.tickets]);
+    });
+  }, [P.tickets]);
 
   return (
     <motion.div
