@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -21,8 +21,27 @@ export default function Doc({ docs, setDocs, showToast }) {
     const [form, setForm] = useState(null);
     const [filter, setFilter] = useState("all");
 
-    const expired = docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0));
-    const expiring = docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30);
+    // ⚡ Bolt Optimization: Memoize the derived document groups to avoid recalculating on every render
+    const { expired, expiring, flt } = useMemo(() => {
+        const expiredArr = [];
+        const expiringArr = [];
+        const typedArr = [];
+
+        for (const d of docs) {
+            const isExpired = d.expired || (d.expiry && daysUntil(d.expiry) < 0);
+            const isExpiring = !isExpired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30;
+
+            if (isExpired) expiredArr.push(d);
+            if (isExpiring) expiringArr.push(d);
+
+            if (filter === "all") typedArr.push(d);
+            else if (filter === "expired" && isExpired) typedArr.push(d);
+            else if (filter === "expiring" && isExpiring) typedArr.push(d);
+            else if (filter !== "expired" && filter !== "expiring" && d.type === filter) typedArr.push(d);
+        }
+
+        return { expired: expiredArr, expiring: expiringArr, flt: typedArr };
+    }, [docs, filter]);
 
     const handleAdd = () => {
         setForm({ name: "", type: "policy", expiry: "", size: "", expired: false });
@@ -56,10 +75,7 @@ export default function Doc({ docs, setDocs, showToast }) {
         showToast("Document deleted");
     };
 
-    const flt = filter === "all" ? docs
-        : filter === "expired" ? docs.filter(d => d.expired || (d.expiry && daysUntil(d.expiry) < 0))
-        : filter === "expiring" ? docs.filter(d => !d.expired && d.expiry && daysUntil(d.expiry) >= 0 && daysUntil(d.expiry) <= 30)
-        : docs.filter(d => d.type === filter);
+
 
     return (
         <div>
