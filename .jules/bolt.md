@@ -11,3 +11,7 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+
+## 2024-05-20 - Avoid O(N) Array filtering loops within rendering maps
+**Learning:** Multiple O(N) array `.filter().length` traversals within map rendering logic in React components (like `ProjectsModule.jsx`, `MaintenanceModule.jsx`, `DashboardModule.jsx`, and `ReportsModule.jsx`) create unnecessary performance overhead during simple re-renders and filter changes.
+**Action:** Consolidate data extractions and count aggregations into a single `.reduce()` or standard `for` loop pass wrapped within `useMemo`. When a component needs both a filtered subset and global statistics across tabs or categories, this O(N) consolidation prevents blocking the main thread during render.

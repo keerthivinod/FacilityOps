@@ -3,22 +3,45 @@ import { useMemo } from "react";
 import { cd } from "@/lib/data";
 
 export default function Rpt({ P }) {
-  // Memoize top level ticket/task computations to avoid O(N) operations on every render
+  // Performance Optimization: Replace multiple O(N) array filtering passes
+  // with a single O(N) reduce pass for tickets and another for tasks
   const stats = useMemo(() => {
     const totalTickets = P.tickets.length;
-    const resolved = P.tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
-    const tatList = P.tickets.filter(t => t.tatMins);
-    const avgTAT = tatList.reduce((a, t) => a + t.tatMins, 0) / (tatList.length || 1);
-    const overdueCount = P.tasks.filter(t => t.status === "overdue").length;
+    let resolved = 0;
+    let tatSum = 0;
+    let tatCount = 0;
+
+    for (let i = 0; i < P.tickets.length; i++) {
+      const t = P.tickets[i];
+      if (t.status === "resolved" || t.status === "closed") resolved++;
+      if (t.tatMins) {
+        tatSum += t.tatMins;
+        tatCount++;
+      }
+    }
+
+    const avgTAT = tatCount > 0 ? tatSum / tatCount : 0;
+
+    let overdueCount = 0;
+    for (let i = 0; i < P.tasks.length; i++) {
+      if (P.tasks[i].status === "overdue") overdueCount++;
+    }
+
     return { totalTickets, resolved, avgTAT, overdueCount };
   }, [P.tickets, P.tasks]);
 
-  // Memoize priority distributions
+  // Performance Optimization: Calculate priority counts in a single pass instead of multiple filters
   const priorityDist = useMemo(() => {
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
+
+    const counts = P.tickets.reduce((acc, t) => {
+      acc[t.priority] = (acc[t.priority] || 0) + 1;
+      return acc;
+    }, {});
+
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = counts[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
