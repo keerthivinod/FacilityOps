@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   autoRoute, LoginScreen, PAGES, BNAV, cd, Spinner,
 } from "@/lib/data";
@@ -137,6 +137,9 @@ function Layout({ user, setUser }) {
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ⚡ Bolt Optimization: Replaced 4 repeated O(N) array filter allocations inside render with a single memoized O(N) pass
+  const unreadCount = useMemo(() => notifs.reduce((acc, n) => acc + (n.read ? 0 : 1), 0), [notifs]);
+
   const dbReady = bootState === "ready";
   const isManager = user?.role === "facility_manager";
   const MANAGER_ONLY_PAGES = ["escalation", "reports", "vendors", "projects"];
@@ -248,10 +251,10 @@ function Layout({ user, setUser }) {
         </div>
         <div style={{ display: "flex", gap: 12 }}>
           <button className="fo-header-btn" onClick={() => goTo("notifications")}
-            aria-label={`Notifications${notifs.filter(n => !n.read).length > 0 ? `, ${notifs.filter(n => !n.read).length} unread` : ""}`}>
+            aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}>
             {"\u{1F514}"}
-            {notifs.filter(n => !n.read).length > 0 && (
-              <span className="fo-notif-dot" aria-hidden="true">{notifs.filter(n => !n.read).length}</span>
+            {unreadCount > 0 && (
+              <span className="fo-notif-dot" aria-hidden="true">{unreadCount}</span>
             )}
           </button>
           <button className="fo-header-btn fo-header-menu-btn" aria-label="Open module menu" aria-haspopup="dialog"
