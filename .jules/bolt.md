@@ -11,3 +11,7 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+
+## 2024-05-23 - Optimize ProjectsModule Rendering
+**Learning:** React components (like ProjectsModule.jsx) frequently perform multiple redundant `.filter()` operations on every render to calculate grouped tab counts and a filtered list simultaneously.
+**Action:** Replace sequential `.filter().length` calls inside JSX with a single `useMemo` block that uses a single O(N) pass to accumulate counts and build the filtered array simultaneously. Ensure proper fallback when reading counts (e.g. `counts[v] || 0`).
