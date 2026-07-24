@@ -11,3 +11,6 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+## 2024-07-24 - Optimizing Redundant UI Array Traversals
+**Learning:** In React components like `MaintenanceModule.jsx`, it's an anti-pattern to calculate counts for UI tabs dynamically in the `.map` render loop using `.filter().length`. It turns a simple render into an `O(T * N)` operation where `T` is tabs and `N` is items.
+**Action:** When filtering a master array into both a single view subset and aggregate state counts, extract this into a single `useMemo` that uses `.reduce` to generate the aggregate counts `O(N)`, and use a separate `useMemo` for the view subset to avoid repeated DOM blocking iterations.
