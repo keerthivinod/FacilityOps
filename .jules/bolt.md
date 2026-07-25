@@ -11,3 +11,7 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+
+## 2025-07-25 - Grouping Relational Arrays to Avoid Nested Render Filters
+**Learning:** In UtilitiesModule, rendering a list of buildings and subsequently running `.filter()` over the `equipment` and `dailyReadings` arrays for each building caused an O(B * E) time complexity bottleneck directly inside the React render cycle.
+**Action:** When a component maps over parent items and filters child arrays by the parent ID, pre-calculate the associations into an object map using `.reduce()` within a `useMemo` block. This reduces time complexity to O(B + E) by replacing the inner loop with an O(1) object lookup, preventing performance degradation on large datasets.

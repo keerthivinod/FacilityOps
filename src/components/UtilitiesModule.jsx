@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -52,6 +52,24 @@ export default function Uti({ utilities, setUtilities, showToast }) {
     const [equipForm, setEquipForm] = useState(null);
     const [showDailyForm, setShowDailyForm] = useState(false);
     const [dailyForm, setDailyForm] = useState(null);
+
+    // ⚡ Bolt Optimization: Group equipment and readings by buildingId once using useMemo.
+    // Prevents running an O(N) array filter for each building inside the render loop, reducing time complexity from O(B*(E+R)) to O(B+E+R).
+    const equipmentByBldg = useMemo(() => {
+        return equipment.reduce((acc, e) => {
+            if (!acc[e.buildingId]) acc[e.buildingId] = [];
+            acc[e.buildingId].push(e);
+            return acc;
+        }, {});
+    }, [equipment]);
+
+    const readingsByBldg = useMemo(() => {
+        return dailyReadings.reduce((acc, d) => {
+            if (!acc[d.buildingId]) acc[d.buildingId] = [];
+            acc[d.buildingId].push(d);
+            return acc;
+        }, {});
+    }, [dailyReadings]);
 
     const handleAdd = () => { setForm({ m: "", grid: 0, solar: 0, water: 0, diesel: 0 }); setShowAdd(true); };
     const handleEdit = (entry) => { setForm({ ...entry }); setShowAdd(true); };
@@ -259,8 +277,8 @@ export default function Uti({ utilities, setUtilities, showToast }) {
                         <button onClick={() => { setBldgForm({ name: "", icon: "\u{1F3E2}", type: "building" }); setShowBldgForm(true); }} style={{ background: "#4f46e5", color: "#fff", border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>+ Add Building</button>
                     </div>
                     {buildings.map(b => {
-                        const bEquip = equipment.filter(e => e.buildingId === b.id);
-                        const bReadings = dailyReadings.filter(d => d.buildingId === b.id);
+                        const bEquip = equipmentByBldg[b.id] || [];
+                        const bReadings = readingsByBldg[b.id] || [];
                         const totalGrid = bReadings.reduce((s, d) => s + (d.grid || 0), 0);
                         return (
                             <div key={b.id} style={{ ...cd({ marginBottom: 8, padding: 14 }) }}>
