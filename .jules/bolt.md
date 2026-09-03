@@ -11,3 +11,7 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+
+## 2026-09-03 - [ReportsModule] Consolidate O(N) ticket filtering into a single pass
+**Learning:** The `ReportsModule.jsx` component was traversing the `P.tickets` array 7 times on every render via multiple `.filter()` and `.map()` calls scattered across two separate `useMemo` hooks to compute statistics and priority distributions.
+**Action:** When aggregating multiple metrics from a single large dataset, consolidate the `.filter()` passes into a single `.reduce()` loop that accumulates all necessary data in one O(N) pass. Combine the dependent `useMemo` hooks into a single hook to prevent redundant calculations and ensure they update synchronously.
