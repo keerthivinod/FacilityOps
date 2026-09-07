@@ -11,3 +11,7 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+
+## 2024-05-18 - Optimize nested filtering mapping in Dashboard and Reports
+**Learning:** In React components like `DashboardModule.jsx` and `ReportsModule.jsx`, mapping over static category lists (like priorities) and then calling `.filter(t => t.priority === p).length` inside the loop causes an O(N*M) time complexity traversal where N is the number of tickets and M is the number of priorities.
+**Action:** Replace the nested `.filter().length` with an O(N) `.reduce()` that builds a hash map of frequencies (`const counts = tickets.reduce(...)`), and then use O(1) hash map lookups (`counts[p] || 0`) inside the `.map()` loop to significantly improve rendering performance.
