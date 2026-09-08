@@ -13,12 +13,18 @@ export default function Rpt({ P }) {
     return { totalTickets, resolved, avgTAT, overdueCount };
   }, [P.tickets, P.tasks]);
 
-  // Memoize priority distributions
+  // ⚡ Bolt Optimization: Calculate priority counts in a single pass instead of O(N*M) filters
   const priorityDist = useMemo(() => {
     const priorities = ["critical", "high", "medium", "low"];
     const colors = { critical: "#dc2626", high: "#ea580c", medium: "#d97706", low: "#2563eb" };
+
+    const counts = P.tickets.reduce((acc, t) => {
+        acc[t.priority] = (acc[t.priority] || 0) + 1;
+        return acc;
+    }, {});
+
     return priorities.map(p => {
-      const cnt = P.tickets.filter(t => t.priority === p).length;
+      const cnt = counts[p] || 0;
       const pct = stats.totalTickets > 0 ? Math.round((cnt / stats.totalTickets) * 100) : 0;
       return { p, cnt, pct, color: colors[p] };
     });
