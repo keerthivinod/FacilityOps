@@ -11,3 +11,6 @@
 ## 2024-05-18 - [Extract Repeated array filter into O(N) reduce]
 **Learning:** Multiple consecutive `.filter()` assignments on identical arrays (like `P.tickets`) in heavily invoked functions (`buildContext`, `generateLocalResponse`) degrade overall component efficiency by repeatedly traversing arrays O(N) over N times when a single loop suffices.
 **Action:** Consolidate multiple independent `.filter()` passes and sum calculations (`.reduce`) into a single `.reduce()` step. By pushing matches to category-specific accumulator arrays and counting aggregate fields (like sums/counts) simultaneously, you accomplish what took ~5 traversals into one O(N) pass, reducing time complexity significantly (benchmarked from ~350ms to ~45ms for large arrays).
+## 2024-05-19 - Combine filtered array and counts into a single useMemo pass
+**Learning:** Found multiple repeated `.filter()` iterations directly inside the render cycle (e.g. `projects.filter(p => p.status === v).length` inside a `.map()`), producing O(N*M) complexity for calculating category counts and generating a filtered list.
+**Action:** Replace direct, repetitive `.filter()` loops with a single `useMemo` block containing an O(N) `for` loop that computes both the dynamically filtered subset array and all necessary category counts simultaneously.
