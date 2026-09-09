@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -40,7 +40,20 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
         showToast("Project deleted");
     };
 
-    const flt = filter === "all" ? projects : projects.filter(p => p.status === filter);
+    // ⚡ Bolt Optimization: Calculate filtered list and status counts simultaneously in a single O(N) pass using useMemo.
+    // This avoids running multiple redundant .filter() passes per render (O(N*M) complexity).
+    const { flt, counts } = useMemo(() => {
+        const countsObj = { all: projects.length };
+        const filteredList = [];
+        for (let i = 0; i < projects.length; i++) {
+            const p = projects[i];
+            countsObj[p.status] = (countsObj[p.status] || 0) + 1;
+            if (filter === "all" || p.status === filter) {
+                filteredList.push(p);
+            }
+        }
+        return { flt: filteredList, counts: countsObj };
+    }, [projects, filter]);
 
     return (
         <div>
@@ -54,7 +67,7 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12 }}>
                 {[["all", "All"], ["planned", "Planned"], ["in-progress", "Active"], ["completed", "Done"], ["on-hold", "On Hold"]].map(([v, l]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#7c3aed" : "#e5e7eb"}`, background: filter === v ? "#7c3aed" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        {l} ({v === "all" ? projects.length : projects.filter(p => p.status === v).length})
+                        {l} ({counts[v] || 0})
                     </button>
                 ))}
             </div>
