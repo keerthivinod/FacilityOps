@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { cd, SB, Badge } from "@/lib/data";
 import { Modal } from "./Modal";
 
@@ -40,7 +40,18 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
         showToast("Project deleted");
     };
 
-    const flt = filter === "all" ? projects : projects.filter(p => p.status === filter);
+    // ⚡ Bolt Optimization: Calculate filtered list and status counts simultaneously in one O(N) pass
+    // This replaces multiple redundant O(N) .filter() passes on every render.
+    const { flt, counts } = useMemo(() => {
+        const counts = { all: projects.length, planned: 0, "in-progress": 0, completed: 0, "on-hold": 0 };
+        const flt = [];
+        for (let i = 0; i < projects.length; i++) {
+            const p = projects[i];
+            if (counts[p.status] !== undefined) counts[p.status]++;
+            if (filter === "all" || p.status === filter) flt.push(p);
+        }
+        return { flt, counts };
+    }, [projects, filter]);
 
     return (
         <div>
@@ -54,7 +65,7 @@ export default function Prj({ projects, setProjects, showToast, staff }) {
             <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 12 }}>
                 {[["all", "All"], ["planned", "Planned"], ["in-progress", "Active"], ["completed", "Done"], ["on-hold", "On Hold"]].map(([v, l]) => (
                     <button key={v} onClick={() => setFilter(v)} style={{ padding: "5px 12px", borderRadius: 999, border: `1px solid ${filter === v ? "#7c3aed" : "#e5e7eb"}`, background: filter === v ? "#7c3aed" : "#fff", color: filter === v ? "#fff" : "#64748b", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        {l} ({v === "all" ? projects.length : projects.filter(p => p.status === v).length})
+                        {l} ({counts[v] || 0})
                     </button>
                 ))}
             </div>
